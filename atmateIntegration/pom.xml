@@ -13,7 +13,7 @@
     <version>0.1</version>
     <name>atmateIntegration</name>
     <description>atmateIntegration</description>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
     <url/>
     <licenses>
         <license/>
