@@ -5,6 +5,9 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.AtCred
 import com.atmate.portal.integration.atmateintegration.database.entitites.Client;
 import com.atmate.portal.integration.atmateintegration.database.services.AtCredentialService;
 import com.atmate.portal.integration.atmateintegration.database.services.ClientService;
+import com.atmate.portal.integration.atmateintegration.utils.ProfileUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,7 @@ import java.util.List;
 @Service
 public class ScrappingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ScrappingService.class);
     @Autowired
     ClientService clientService;
     @Autowired
@@ -22,6 +26,8 @@ public class ScrappingService {
     CryptoService cryptoService;
     @Autowired
     GetATDataThread getATDataThread;
+    @Autowired
+    private ProfileUtil profileUtil;
 
     // Executa a cada 1 hora (3600000 ms)
     // Executa a cada 1 min (60000 ms)
@@ -30,22 +36,26 @@ public class ScrappingService {
     @Scheduled(fixedRate = 10000)
     public void executeScrape() throws Exception {
 
+
         List<Client> clients = clientService.getAllClients();
+        if(!profileUtil.isDev()) {
+            for (Client client : clients) {
+                AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
+                if (atCredential != null) {
+                    // Define os dados no objeto já gerenciado pelo Spring
+                    getATDataThread.setClient(client);
 
-        for(Client client : clients){
-            AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
-            if( atCredential != null) {
-                // Define os dados no objeto já gerenciado pelo Spring
-                getATDataThread.setClient(client);
+                    String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
 
-                String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
+                    getATDataThread.setPassword(decryptedPassword);
 
-                getATDataThread.setPassword(decryptedPassword);
-
-                // Correr a thread
-                Thread thread = new Thread(getATDataThread);
-                thread.start();
+                    // Correr a thread
+                    Thread thread = new Thread(getATDataThread);
+                    thread.start();
+                }
             }
+        }else{
+            logger.info("Perfil ativo é DEV, não será feito scrapping.");
         }
     }
 }

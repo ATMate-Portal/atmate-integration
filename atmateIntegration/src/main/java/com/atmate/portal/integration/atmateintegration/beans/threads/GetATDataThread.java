@@ -6,6 +6,8 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.TaxTyp
 import com.atmate.portal.integration.atmateintegration.database.services.TaxService;
 import com.atmate.portal.integration.atmateintegration.database.services.TaxTypeService;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -22,9 +24,10 @@ public class GetATDataThread implements Runnable {
     private Client client;
     private String password;
     private final String scriptAbsolutePath = "src/main/resources/scripts/";
-
     TaxService taxService;
     TaxTypeService taxTypeService;
+
+    private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
     @Autowired
     public GetATDataThread(TaxService taxService, TaxTypeService taxTypeService) {
@@ -34,6 +37,7 @@ public class GetATDataThread implements Runnable {
 
     @Override
     public void run() {
+        logger.info("A iniciar scraping do cliente " + client.getName() + " NIF: " + client.getNif());
         doLoginAT(client.getNif(), password);
         getIUC();
     }
@@ -69,7 +73,8 @@ public class GetATDataThread implements Runnable {
 
             process.waitFor();
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            logger.info("A iniciar scraping do cliente " + client.getName() + " NIF: " + client.getNif());
+
         }
     }
 
