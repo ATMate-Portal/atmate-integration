@@ -61,20 +61,20 @@ public class GetATDataThread implements Runnable {
             String line;
             while ((line = reader.readLine()) != null) {
                 System.out.println(line);
-
+                logger.info(line);
             }
 
             int exitCode = process.waitFor();
-            System.out.println("Código de saída do Python: " + exitCode);
+            logger.info("Código de saída do Python: " + exitCode);
 
             if (exitCode != 0) {
-                System.err.println("Erro ao executar o script Python.");
+                logger.info("Erro ao executar o script Python.");
             }
 
             process.waitFor();
         } catch (IOException | InterruptedException e) {
             logger.info("A iniciar scraping do cliente " + client.getName() + " NIF: " + client.getNif());
-
+            e.printStackTrace();
         }
     }
 
