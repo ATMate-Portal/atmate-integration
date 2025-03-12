@@ -40,24 +40,30 @@ public class ScrappingService {
         
 
         List<Client> clients = clientService.getAllClients();
-        if(!profileUtil.isDev()) {
-            for (Client client : clients) {
-                AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
-                if (atCredential != null) {
-                    // Define os dados no objeto já gerenciado pelo Spring
-                    getATDataThread.setClient(client);
+        if(clients!=null && !clients.isEmpty()) {
+            logger.info("Número de clientes a processar: " + clients.size());
+            if (!profileUtil.isDev()) {
+                for (Client client : clients) {
+                    logger.info("A iniciar tratamento do cliente " + client.getName() + " - NIF: " + client.getNif());
+                    AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
+                    if (atCredential != null) {
+                        logger.info("Credenciais encontradas");
+                        // Define os dados no objeto já gerenciado pelo Spring
+                        getATDataThread.setClient(client);
 
-                    String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
+                        String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
 
-                    getATDataThread.setPassword(decryptedPassword);
+                        getATDataThread.setPassword(decryptedPassword);
 
-                    // Correr a thread
-                    Thread thread = new Thread(getATDataThread);
-                    thread.start();
+                        logger.info("A iniciar thread do cliente " + client.getName());
+                        // Correr a thread
+                        Thread thread = new Thread(getATDataThread);
+                        thread.start();
+                    }
                 }
+            } else {
+                logger.info("Perfil ativo é DEV, não será feito scrapping.");
             }
-        }else{
-            logger.info("Perfil ativo é DEV, não será feito scrapping.");
         }
     }
 }

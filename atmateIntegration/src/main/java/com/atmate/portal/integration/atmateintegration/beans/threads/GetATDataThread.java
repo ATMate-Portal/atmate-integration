@@ -37,9 +37,12 @@ public class GetATDataThread implements Runnable {
 
     @Override
     public void run() {
-        logger.info("A iniciar scraping do cliente " + client.getName() + " NIF: " + client.getNif());
+        logger.info("--------------- Thread iniciada ---------------");
         doLoginAT(client.getNif(), password);
+        logger.info("--------------- 1. Login Feito ---------------");
         getIUC();
+        logger.info("--------------- 1. IUC Obtido ---------------");
+        logger.info("--------------- Thread terminada ---------------");
     }
 
     public void setClient(Client client) {

@@ -14,5 +14,6 @@ public class ProfileUtil {
     public boolean isDev() {
         return environment.acceptsProfiles("dev");
     }
+
 }
 
