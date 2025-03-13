@@ -50,20 +50,20 @@ public class GetATDataThread implements Runnable {
 
     public void setClient(Client client) {
         this.client = client;
-        logger.debug("Cliente definido para a thread: {}", client.getName());
+        logger.info("Cliente definido para a thread: {}", client.getName());
     }
 
     public void setPassword(String password) {
         this.password = password;
-        logger.debug("Password definida para a thread.");
+        logger.info("Password definida para a thread.");
     }
 
     private void doLoginAT(Integer nif, String password) {
         logger.info("Iniciando login no AT para o cliente com NIF: {}", nif);
         try {
             String atLoginFileName = "at_login.py";
+            logger.info("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
-            logger.debug("Caminho do script de login: {}", scriptPath);
 
             ProcessBuilder processBuilder = new ProcessBuilder("python", scriptPath, String.valueOf(nif), password);
             Process process = processBuilder.start();
@@ -71,7 +71,7 @@ public class GetATDataThread implements Runnable {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                logger.debug("Saída do script de login: {}", line);
+                logger.info("Saída do script de login: {}", line);
             }
 
             int exitCode = process.waitFor();
@@ -95,7 +95,7 @@ public class GetATDataThread implements Runnable {
             String atGetIUCFileName = "at_get_iuc.py";
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
-            logger.debug("Caminho do script de obtenção do IUC: {}", scriptPath);
+            logger.info("Caminho do script de obtenção do IUC: {}", scriptPath);
 
             ProcessBuilder processBuilder = new ProcessBuilder("python", scriptPath);
             Process process = processBuilder.start();
@@ -105,7 +105,7 @@ public class GetATDataThread implements Runnable {
             StringBuilder output = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                logger.debug("Saída do script de obtenção do IUC: {}", line);
+                logger.info("Saída do script de obtenção do IUC: {}", line);
                 output.append(line);
             }
             taxJSON = output.toString();
@@ -115,7 +115,7 @@ public class GetATDataThread implements Runnable {
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
             if (taxType.isPresent()) {
-                logger.debug("TaxType encontrado: {}", taxType.get().getId());
+                logger.info("TaxType encontrado: {}", taxType.get().getId());
             } else {
                 logger.warn("TaxType com ID 1 não encontrado.");
             }
