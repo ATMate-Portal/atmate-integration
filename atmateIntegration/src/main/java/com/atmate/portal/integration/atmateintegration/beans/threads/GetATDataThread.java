@@ -67,7 +67,9 @@ public class GetATDataThread implements Runnable {
             logger.info("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
 
-            ProcessBuilder processBuilder = new ProcessBuilder("python", scriptPath, String.valueOf(nif), password);
+            String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
+            ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath, String.valueOf(nif), password);
+            //processBuilder = new ProcessBuilder("python", scriptPath, String.valueOf(nif), password);
             Process process = processBuilder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
