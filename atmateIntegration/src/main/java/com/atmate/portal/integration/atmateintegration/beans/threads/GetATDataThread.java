@@ -99,7 +99,8 @@ public class GetATDataThread implements Runnable {
             }
 
             String formattedJSON = GSONFormatter.formatIUCJSON(taxJSON);
-
+            logger.info("IUC do cliente " + client.getName() + " obtido: " + formattedJSON);
+            
             //IUC é o tipo 1
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
 
