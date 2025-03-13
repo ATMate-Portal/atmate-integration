@@ -33,98 +33,108 @@ public class GetATDataThread implements Runnable {
     public GetATDataThread(TaxService taxService, TaxTypeService taxTypeService) {
         this.taxService = taxService;
         this.taxTypeService = taxTypeService;
+        logger.info("GetATDataThread inicializado com TaxService e TaxTypeService.");
     }
 
     @Override
     public void run() {
-        logger.info("--------------- Thread iniciada ---------------");
+        logger.info("--------------- Thread iniciada para o cliente: {} ---------------", client.getName());
         doLoginAT(client.getNif(), password);
-        logger.info("--------------- 1. Login Feito ---------------");
+        logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
         getIUC();
-        logger.info("--------------- 1. IUC Obtido ---------------");
-        logger.info("--------------- Thread terminada ---------------");
+        logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
+        logger.info("--------------- Thread terminada para o cliente: {} ---------------", client.getName());
     }
 
     public void setClient(Client client) {
         this.client = client;
+        logger.debug("Cliente definido para a thread: {}", client.getName());
     }
 
     public void setPassword(String password) {
         this.password = password;
+        logger.debug("Password definida para a thread.");
     }
 
-    private void doLoginAT(Integer nif, String password){
+    private void doLoginAT(Integer nif, String password) {
+        logger.info("Iniciando login no AT para o cliente com NIF: {}", nif);
         try {
             String atLoginFileName = "at_login.py";
-            String scriptPath = new File(scriptAbsolutePath+ atLoginFileName).getAbsolutePath();
+            String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
+            logger.debug("Caminho do script de login: {}", scriptPath);
+
             ProcessBuilder processBuilder = new ProcessBuilder("python", scriptPath, String.valueOf(nif), password);
             Process process = processBuilder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-                logger.info(line);
+                logger.debug("Saída do script de login: {}", line);
             }
 
             int exitCode = process.waitFor();
-            logger.info("Código de saída do Python: " + exitCode);
+            logger.info("Código de saída do script de login: {}", exitCode);
 
             if (exitCode != 0) {
-                logger.info("Erro ao executar o script Python.");
+                logger.error("Erro ao executar o script de login para o cliente com NIF: {}", nif);
+            } else {
+                logger.info("Login realizado com sucesso para o cliente com NIF: {}", nif);
             }
 
             process.waitFor();
         } catch (IOException | InterruptedException e) {
-            logger.info("A iniciar scraping do cliente " + client.getName() + " NIF: " + client.getNif());
-            e.printStackTrace();
+            logger.error("Erro durante o login no AT para o cliente com NIF: {}", nif, e);
         }
     }
 
-    private void getIUC(){
+    private void getIUC() {
+        logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
         try {
             String atGetIUCFileName = "at_get_iuc.py";
             String taxJSON = "";
-            String scriptPath = new File(scriptAbsolutePath+atGetIUCFileName).getAbsolutePath();
+            String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
+            logger.debug("Caminho do script de obtenção do IUC: {}", scriptPath);
+
             ProcessBuilder processBuilder = new ProcessBuilder("python", scriptPath);
             Process process = processBuilder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.ISO_8859_1));
 
-
+            StringBuilder output = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-                taxJSON = line;
+                logger.debug("Saída do script de obtenção do IUC: {}", line);
+                output.append(line);
             }
+            taxJSON = output.toString();
 
             String formattedJSON = GSONFormatter.formatIUCJSON(taxJSON);
-            logger.info("IUC do cliente " + client.getName() + " obtido: " + formattedJSON);
-            
-            //IUC é o tipo 1
+            logger.info("IUC do cliente {} obtido: {}", client.getName(), formattedJSON);
+
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
+            if (taxType.isPresent()) {
+                logger.debug("TaxType encontrado: {}", taxType.get().getId());
+            } else {
+                logger.warn("TaxType com ID 1 não encontrado.");
+            }
 
             Optional<Tax> tax = taxService.getTaxByClientAndType(client, taxType.orElse(null));
 
-            if(tax.isPresent()){
-                taxService.updateTax(tax.orElse(null).getId(), tax.orElse(null));
-
-            }else{
-
+            if (tax.isPresent()) {
+                taxService.updateTax(tax.get().getId(), tax.get());
+                logger.info("Tax atualizado para o cliente: {}", client.getName());
+            } else {
                 Tax newClientTax = new Tax();
                 newClientTax.setTaxType(taxType.orElse(null));
                 newClientTax.setTaxData(formattedJSON);
                 newClientTax.setClient(client);
-
                 taxService.createTax(newClientTax);
+                logger.info("Novo Tax criado para o cliente: {}", client.getName());
             }
-
-
 
             process.waitFor();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Erro ao obter o IUC para o cliente: {}", client.getName(), e);
         }
     }
-
 }
