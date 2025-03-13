@@ -9,9 +9,9 @@ import com.atmate.portal.integration.atmateintegration.utils.ProfileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationContext;
 
 import java.util.List;
 
@@ -27,20 +27,14 @@ public class ScrappingService {
     @Autowired
     CryptoService cryptoService;
     @Autowired
-    GetATDataThread getATDataThread;
-    @Autowired
     private ProfileUtil profileUtil;
+    @Autowired
+    private ApplicationContext applicationContext;
 
-    // Executa a cada 1 hora (3600000 ms)
-    // Executa a cada 1 min (60000 ms)
-    // Executa a cada 30 seg (30000 ms)
-    // Executa a cada 1 seg (1000 ms)
     @Scheduled(fixedRateString = "${scraping.delay}")
     public void executeScrape() throws Exception {
-        
-
         List<Client> clients = clientService.getAllClients();
-        if(clients!=null && !clients.isEmpty()) {
+        if (clients != null && !clients.isEmpty()) {
             logger.info("Número de clientes a processar: " + clients.size());
             if (!profileUtil.isDev()) {
                 for (Client client : clients) {
@@ -48,15 +42,14 @@ public class ScrappingService {
                     AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
                     if (atCredential != null) {
                         logger.info("Credenciais encontradas");
-                        // Define os dados no objeto já gerenciado pelo Spring
+                        // Obter uma nova instância de GetATDataThread do ApplicationContext
+                        GetATDataThread getATDataThread = applicationContext.getBean(GetATDataThread.class);
+                        // Configurar a instância
                         getATDataThread.setClient(client);
-
                         String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
-
                         getATDataThread.setPassword(decryptedPassword);
-
+                        // Iniciar a thread
                         logger.info("A iniciar thread do cliente " + client.getName());
-                        // Correr a thread
                         Thread thread = new Thread(getATDataThread);
                         thread.start();
                     }
