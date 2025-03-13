@@ -9,6 +9,7 @@ import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -23,6 +24,7 @@ public class GetATDataThread implements Runnable {
 
     private Client client;
     private String password;
+    @Value()
     private final String scriptAbsolutePath = "src/main/resources/scripts/";
     TaxService taxService;
     TaxTypeService taxTypeService;
