@@ -62,6 +62,8 @@ public class GetATDataThread implements Runnable {
         logger.info("Iniciando login no AT para o cliente com NIF: {}", nif);
         try {
             String atLoginFileName = "at_login.py";
+            logger.info("Nome do script " + atLoginFileName);
+            logger.info("Caminho absoluto " + scriptAbsolutePath);
             logger.info("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
 
