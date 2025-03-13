@@ -24,8 +24,8 @@ public class GetATDataThread implements Runnable {
 
     private Client client;
     private String password;
-    @Value()
-    private final String scriptAbsolutePath = "src/main/resources/scripts/";
+    @Value("${python.script.path}")
+    private String scriptAbsolutePath;
     TaxService taxService;
     TaxTypeService taxTypeService;
 
