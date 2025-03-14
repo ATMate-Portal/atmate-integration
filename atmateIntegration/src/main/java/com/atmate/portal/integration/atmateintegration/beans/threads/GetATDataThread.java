@@ -38,36 +38,36 @@ public class GetATDataThread implements Runnable {
     public GetATDataThread(TaxService taxService, TaxTypeService taxTypeService) {
         this.taxService = taxService;
         this.taxTypeService = taxTypeService;
-        logger.info("GetATDataThread inicializado com TaxService e TaxTypeService.");
+        logMessage("GetATDataThread inicializado com TaxService e TaxTypeService.");
     }
 
     @Override
     public void run() {
-        logger.info("--------------- Thread iniciada para o cliente: {} ---------------", client.getName());
+        logMessage("--------------- Thread iniciada para o cliente: "+client.getName()+" ---------------");
         doLoginAT(client.getNif(), password);
-        logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
+        logMessage("--------------- Login Feito para o cliente: "+client.getName()+" ---------------");
         getIUC(client.getNif());
-        logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
-        logger.info("--------------- Thread terminada para o cliente: {} ---------------", client.getName());
+        logMessage("--------------- IUC Obtido para o cliente: "+client.getName()+" ---------------");
+        logMessage("--------------- Thread terminada para o cliente: "+client.getName()+" ---------------");
     }
 
     public void setClient(Client client) {
         this.client = client;
-        logger.info("Cliente definido para a thread: {}", client.getName());
+        logMessage("Cliente definido para a thread: " + client.getName());
     }
 
     public void setPassword(String password) {
         this.password = password;
-        logger.info("Password definida para a thread.");
+        logMessage("Password definida para a thread.");
     }
 
     private void doLoginAT(Integer nif, String password) {
-        logger.info("Iniciando login no AT para o cliente com NIF: {}", nif);
+        logMessage("Iniciando login no AT para o cliente com NIF: "+nif);
         try {
             String atLoginFileName = "at_login.py";
-            logger.info("Nome do script " + atLoginFileName);
-            logger.info("Caminho absoluto " + scriptAbsolutePath);
-            logger.info("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
+            logMessage("Nome do script " + atLoginFileName);
+            logMessage("Caminho absoluto " + scriptAbsolutePath);
+            logMessage("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
 
             String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
@@ -81,31 +81,31 @@ public class GetATDataThread implements Runnable {
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                logger.info("Saída do script de login: {}", line);
+                logMessage("Saída do script de login: " + line);
             }
 
             int exitCode = process.waitFor();
-            logger.info("Código de saída do script de login: {}", exitCode);
+            logMessage("Código de saída do script de login: "+ exitCode);
 
             if (exitCode != 0) {
-                logger.error("Erro ao executar o script de login para o cliente com NIF: {}", nif);
+                logMessage("Erro ao executar o script de login para o cliente com NIF: " + nif);
             } else {
-                logger.info("Login realizado com sucesso para o cliente com NIF: {}", nif);
+                logMessage("Login realizado com sucesso para o cliente com NIF: " +  nif);
             }
 
             process.waitFor();
         } catch (IOException | InterruptedException e) {
-            logger.error("Erro durante o login no AT para o cliente com NIF: {}", nif, e);
+            logMessage("Erro durante o login no AT para o cliente com NIF: " + nif);
         }
     }
 
     private void getIUC(Integer nif) {
-        logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
+        logMessage("Iniciando obtenção do IUC para o cliente: " + client.getName());
         try {
             String atGetIUCFileName = "at_get_iuc.py";
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
-            logger.info("Caminho do script de obtenção do IUC: {}", scriptPath);
+            logMessage("Caminho do script de obtenção do IUC: " + scriptPath);
 
             System.out.println(System.getenv("PATH"));
             String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
@@ -120,39 +120,45 @@ public class GetATDataThread implements Runnable {
             StringBuilder output = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                logger.info("Saída do script de obtenção do IUC: {}", line);
+                logMessage("Saída do script de obtenção do IUC: " + line);
                 output.append(line);
             }
             taxJSON = output.toString();
 
-            logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
+            logMessage("IUC do cliente "+client.getName()+" obtido: " + taxJSON);
             String formattedJSON = GSONFormatter.formatIUCJSON(taxJSON);
 
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
             if (taxType.isPresent()) {
-                logger.info("TaxType encontrado: {}", taxType.get().getId());
+                logMessage("TaxType encontrado: "+taxType.get().getId());
             } else {
-                logger.warn("TaxType com ID 1 não encontrado.");
+                logMessage("TaxType com ID 1 não encontrado.");
             }
 
             Optional<Tax> tax = taxService.getTaxByClientAndType(client, taxType.orElse(null));
 
             if (tax.isPresent()) {
                 taxService.updateTax(tax.get().getId(), tax.get());
-                logger.info("Tax atualizado para o cliente: {}", client.getName());
+                logMessage("Tax atualizado para o cliente: " + client.getName());
             } else {
                 Tax newClientTax = new Tax();
                 newClientTax.setTaxType(taxType.orElse(null));
                 newClientTax.setTaxData(formattedJSON);
                 newClientTax.setClient(client);
                 taxService.createTax(newClientTax);
-                logger.info("Novo Tax criado para o cliente: {}", client.getName());
+                logMessage("Novo Tax criado para o cliente: " + client.getName());
             }
 
             process.waitFor();
         } catch (Exception e) {
-            logger.error("Erro ao obter o IUC para o cliente: {}", client.getName(), e);
+            logMessage("Erro ao obter o IUC para o cliente: " + client.getName() + " " + e);
+        }
+    }
+
+    public void logMessage(String message) {
+        synchronized (this) {
+            logger.info(message); // Correção: chamando o logger.info
         }
     }
 }
