@@ -41,7 +41,6 @@ public class ScrappingService {
                     logger.info("A iniciar tratamento do cliente " + client.getName() + " - NIF: " + client.getNif());
                     AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
                     if (atCredential != null) {
-                        logger.info("Credenciais encontradas");
                         // Obter uma nova instância de GetATDataThread do ApplicationContext
                         GetATDataThread getATDataThread = applicationContext.getBean(GetATDataThread.class);
                         // Configurar a instância
@@ -49,7 +48,6 @@ public class ScrappingService {
                         String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
                         getATDataThread.setPassword(decryptedPassword);
                         // Iniciar a thread
-                        logger.info("A iniciar thread do cliente " + client.getName());
                         Thread thread = new Thread(getATDataThread);
                         thread.start();
                     }

@@ -38,36 +38,28 @@ public class GetATDataThread implements Runnable {
     public GetATDataThread(TaxService taxService, TaxTypeService taxTypeService) {
         this.taxService = taxService;
         this.taxTypeService = taxTypeService;
-        logger.info("GetATDataThread inicializado com TaxService e TaxTypeService.");
     }
 
     @Override
     public void run() {
-        logger.info("--------------- Thread iniciada para o cliente: {} ---------------", client.getName());
         doLoginAT(client.getNif(), password);
         logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
         getIUC(client.getNif());
         logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
-        logger.info("--------------- Thread terminada para o cliente: {} ---------------", client.getName());
     }
 
     public void setClient(Client client) {
         this.client = client;
-        logger.info("Cliente definido para a thread: {}", client.getName());
     }
 
     public void setPassword(String password) {
         this.password = password;
-        logger.info("Password definida para a thread.");
     }
 
     private void doLoginAT(Integer nif, String password) {
         logger.info("Iniciando login no AT para o cliente com NIF: {}", nif);
         try {
             String atLoginFileName = "at_login.py";
-            logger.info("Nome do script " + atLoginFileName);
-            logger.info("Caminho absoluto " + scriptAbsolutePath);
-            logger.info("Caminho do script de login: " + scriptAbsolutePath + atLoginFileName);
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
 
             String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
@@ -102,12 +94,11 @@ public class GetATDataThread implements Runnable {
     private void getIUC(Integer nif) {
         logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
         try {
+
             String atGetIUCFileName = "at_get_iuc.py";
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
-            logger.info("Caminho do script de obtenção do IUC: {}", scriptPath);
 
-            System.out.println(System.getenv("PATH"));
             String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
 
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
@@ -130,24 +121,19 @@ public class GetATDataThread implements Runnable {
 
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
-            if (taxType.isPresent()) {
-                logger.info("TaxType encontrado: {}", taxType.get().getId());
-            } else {
-                logger.warn("TaxType com ID 1 não encontrado.");
-            }
 
             Optional<Tax> tax = taxService.getTaxByClientAndType(client, taxType.orElse(null));
 
             if (tax.isPresent()) {
                 taxService.updateTax(tax.get().getId(), tax.get());
-                logger.info("Tax atualizado para o cliente: {}", client.getName());
+                logger.info("Imposto atualizado para o cliente: {}", client.getName());
             } else {
                 Tax newClientTax = new Tax();
                 newClientTax.setTaxType(taxType.orElse(null));
                 newClientTax.setTaxData(formattedJSON);
                 newClientTax.setClient(client);
                 taxService.createTax(newClientTax);
-                logger.info("Novo Tax criado para o cliente: {}", client.getName());
+                logger.info("Novo imposto criado para o cliente: {}", client.getName());
             }
 
             process.waitFor();
