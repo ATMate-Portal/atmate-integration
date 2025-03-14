@@ -6,6 +6,7 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.TaxTyp
 import com.atmate.portal.integration.atmateintegration.database.services.TaxService;
 import com.atmate.portal.integration.atmateintegration.database.services.TaxTypeService;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
+import com.atmate.portal.integration.atmateintegration.utils.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,9 +157,9 @@ public class GetATDataThread implements Runnable {
         }
     }
 
-    public void logMessage(String message) {
+    private void logMessage(String message) {
         synchronized (this) {
-            logger.info(message); // Correção: chamando o logger.info
+            LogManager.log(message); // Usar LogManager para registrar a mensagem
         }
     }
 }
