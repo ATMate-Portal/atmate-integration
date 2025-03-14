@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class LogWebSocketHandler extends TextWebSocketHandler {
 
-    @Value("${logging.file.path}")
-    private String logFilePath; 
+    @Value("${log.path}")
+    private String logFilePath;
 
     private WebSocketSession session;
     private ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
