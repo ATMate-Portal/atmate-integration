@@ -46,7 +46,7 @@ public class GetATDataThread implements Runnable {
         logger.info("--------------- Thread iniciada para o cliente: {} ---------------", client.getName());
         doLoginAT(client.getNif(), password);
         logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
-        getIUC();
+        getIUC(client.getNif());
         logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
         logger.info("--------------- Thread terminada para o cliente: {} ---------------", client.getName());
     }
@@ -99,7 +99,7 @@ public class GetATDataThread implements Runnable {
         }
     }
 
-    private void getIUC() {
+    private void getIUC(Integer nif) {
         logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
         try {
             String atGetIUCFileName = "at_get_iuc.py";
@@ -111,6 +111,8 @@ public class GetATDataThread implements Runnable {
             String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
 
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
+            Map<String, String> environment = processBuilder.environment();
+            environment.put("NIF", String.valueOf(nif));
             Process process = processBuilder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.ISO_8859_1));
@@ -123,8 +125,9 @@ public class GetATDataThread implements Runnable {
             }
             taxJSON = output.toString();
 
+            logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
             String formattedJSON = GSONFormatter.formatIUCJSON(taxJSON);
-            logger.info("IUC do cliente {} obtido: {}", client.getName(), formattedJSON);
+
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
             if (taxType.isPresent()) {
