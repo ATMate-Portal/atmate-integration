@@ -1,16 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head>
-    <title>Logs</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs da Aplicação</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 10px;
+        }
+        #log-container {
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid #444;
+            padding: 10px;
+            background: #222;
+        }
+        .log-line {
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-<h2>Logs da Aplicação</h2>
-<pre id="logs"></pre>
+
+<h2>Logs em Tempo Real</h2>
+<div id="log-container"></div>
+
 <script>
-    const eventSource = new EventSource("/logs");
-    eventSource.onmessage = (event) => {
-        document.getElementById("logs").textContent += event.data + "\n";
+    const logContainer = document.getElementById("log-container");
+    const eventSource = new EventSource("http://localhost:8080/logs");
+
+    let autoScroll = true;
+
+    logContainer.addEventListener("scroll", () => {
+        // Verifica se o utilizador está no fundo da página
+        autoScroll = logContainer.scrollTop + logContainer.clientHeight >= logContainer.scrollHeight - 5;
+    });
+
+    eventSource.onmessage = function(event) {
+        const logLine = document.createElement("div");
+        logLine.className = "log-line";
+        logLine.textContent = event.data;
+        logContainer.appendChild(logLine);
+
+        // Só faz scroll automático se o utilizador já estiver no fundo
+        if (autoScroll) {
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    };
+
+    eventSource.onerror = function() {
+        console.error("Erro na conexão com o servidor de logs.");
     };
 </script>
+
 </body>
 </html>
