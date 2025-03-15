@@ -20,6 +20,7 @@ public class LogController {
 
     @GetMapping(value = "/logs", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> streamLogs() {
+        System.out.println("teste");
         return Flux.interval(Duration.ofSeconds(1))
                    .flatMap(i -> Flux.fromStream(readLastLines()))
                    .map(line -> "data: " + line + "\n\n"); // Formato SSE
