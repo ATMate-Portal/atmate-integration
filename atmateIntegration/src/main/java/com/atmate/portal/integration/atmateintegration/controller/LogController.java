@@ -27,7 +27,7 @@ public class LogController {
 
     private Stream<String> readLastLines() {
         try {
-            File file = new File(LOG_FILE_PATH);
+            File file = new File(LOG_FILE_PATH + "integration-api.log");
             BufferedReader reader = new BufferedReader(new FileReader(file));
             return reader.lines().skip(Math.max(0, file.length() - 10)).onClose(() -> {
                 try { reader.close(); } catch (Exception ignored) {}
