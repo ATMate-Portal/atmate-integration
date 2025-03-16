@@ -1,9 +1,23 @@
 import pickle
 from bs4 import BeautifulSoup
 import json
+import os
 
+nif = os.environ.get("NIF")
+if not nif:
+    nif = "249428520"
+scriptPath = os.environ.get("SCRIPT_PATH")
+if not scriptPath:
+    scriptPath = "src/main/resources/scripts/"
+
+session_file_name = f'session_{nif}.pkl'
+jsessionid_file_name = f'JSessionID_{nif}.pkl'
+
+session_file_path = os.path.join(scriptPath, session_file_name)
+jsessionid_file_path = os.path.join(scriptPath, jsessionid_file_name)
+ 
 # Carregar a sessão salva
-with open('session.pkl', 'rb') as f:
+with open(session_file_path, 'rb') as f:
     session = pickle.load(f)
 
 #CHAMADA 1
@@ -32,8 +46,7 @@ response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/iuc', cookies
 #CHAMADA 2
 ################################################################################################################################
 
-# Carregar a cookie do ficheiro
-with open('autentica_JSessionID.pkl', 'rb') as f:
+with open(jsessionid_file_path, 'rb') as f:
     cookie_value = pickle.load(f)
 # Adicionar a cookie manualmente à sessão
 session.cookies.set('autentica_JSessionID', cookie_value)

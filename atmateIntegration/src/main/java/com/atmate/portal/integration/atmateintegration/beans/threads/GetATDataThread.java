@@ -6,6 +6,7 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.TaxTyp
 import com.atmate.portal.integration.atmateintegration.database.services.TaxService;
 import com.atmate.portal.integration.atmateintegration.database.services.TaxTypeService;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,8 +31,12 @@ public class GetATDataThread implements Runnable {
     private String password;
     @Value("${python.script.path}")
     private String scriptAbsolutePath;
+    @Value("${python.path}")
+    private String pythonPath;
     TaxService taxService;
     TaxTypeService taxTypeService;
+    @Autowired
+    private GSONFormatter gsonFormatter;
 
     private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
@@ -62,12 +68,11 @@ public class GetATDataThread implements Runnable {
             String atLoginFileName = "at_login.py";
             String scriptPath = new File(scriptAbsolutePath + atLoginFileName).getAbsolutePath();
 
-            String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
-
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
             environment.put("NIF", String.valueOf(nif));
             environment.put("PASSWORD", password);
+            environment.put("SCRIPT_PATH", scriptAbsolutePath);
             Process process = processBuilder.start();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -94,12 +99,9 @@ public class GetATDataThread implements Runnable {
     private void getIUC(Integer nif) {
         logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
         try {
-
             String atGetIUCFileName = "at_get_iuc.py";
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
-
-            String pythonPath = "C:\\Users\\Tiago Cardoso\\AppData\\Local\\Programs\\Python\\Python312\\python.exe";
 
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
@@ -117,17 +119,14 @@ public class GetATDataThread implements Runnable {
             taxJSON = output.toString();
 
             logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
-            String formattedJSON = GSONFormatter.formatIUCJSON(taxJSON);
 
+            List<Map<String, String>> formattedList = gsonFormatter.formatIUCJSON(taxJSON);
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
 
-            Optional<Tax> tax = taxService.getTaxByClientAndType(client, taxType.orElse(null));
+            for (Map<String, String> formattedMap : formattedList) {
+                String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
 
-            if (tax.isPresent()) {
-                taxService.updateTax(tax.get().getId(), tax.get());
-                logger.info("Imposto atualizado para o cliente: {}", client.getName());
-            } else {
                 Tax newClientTax = new Tax();
                 newClientTax.setTaxType(taxType.orElse(null));
                 newClientTax.setTaxData(formattedJSON);

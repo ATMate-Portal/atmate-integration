@@ -1,113 +1,110 @@
 import pickle
 import requests
 from bs4 import BeautifulSoup
+import os
 
-# Criar uma sessão para gerenciar cookies automaticamente
-session = requests.Session()
+try:
+    nif = os.environ.get("NIF")
+    if not nif:
+        nif = "249428520"
+    password = os.environ.get("PASSWORD")
+    if not password:
+        password = "SFHi3242v3"
+    scriptPath = os.environ.get("SCRIPT_PATH")
+    if not scriptPath:
+        scriptPath = "src/main/resources/scripts/"
+    
+    session_file_name = f'session_{nif}.pkl'
+    jsessionid_file_name = f'JSessionID_{nif}.pkl'
 
-#CHAMADA 1
-################################################################################################################################
-headers = {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Language': 'pt-PT,pt;q=0.8',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Pragma': 'no-cache',
-    'Referer': 'https://www.portaldasfinancas.gov.pt/',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'same-site',
-    'Sec-Fetch-User': '?1',
-    'Sec-GPC': '1',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-    'sec-ch-ua': '"Not(A:Brand";v="99", "Brave";v="133", "Chromium";v="133"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-}
-response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/geral/dashboard', headers=headers, allow_redirects=False)
-session.cookies.clear() # Não são necessárias as cookies desta resposta
-################################################################################################################################
+    session_file_path = os.path.join(scriptPath, session_file_name)
+    jsessionid_file_path = os.path.join(scriptPath, jsessionid_file_name)
 
-#CHAMADA 2
-################################################################################################################################
-headers.update({'Sec-Fetch-Site': 'cross-site'}) #Só muda este header
+    session = requests.Session()
 
-# Esta chamada não precisa de cookies.
-response = session.get('https://www.acesso.gov.pt/v2/loginForm?partID=PFAP&path=/geral/dashboard', headers=headers)
-################################################################################################################################
+    # CHAMADA 1
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
+    }
+    response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/geral/dashboard', headers=headers, allow_redirects=False)
+    session.cookies.clear()
 
-#CHAMADA 3
-################################################################################################################################
-# Construção do Payload (data)
-soup = BeautifulSoup(response.text, 'html.parser')
+    # CHAMADA 2
+    headers.update({'Sec-Fetch-Site': 'cross-site'})
+    response = session.get('https://www.acesso.gov.pt/v2/loginForm?partID=PFAP&path=/geral/dashboard', headers=headers)
 
-path = soup.find("input", {"name": "path"})["value"]
-partID = soup.find("input", {"name": "partID"})["value"]
-authVersion = soup.find("input", {"name": "authVersion"})["value"]
-csrf_token = soup.find("input", {"name": "_csrf"})["value"]
-username = "249428520"
-password = "SFHi3242v3"
+    # CHAMADA 3
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-data = f'path={path}&partID={partID}&authVersion={authVersion}&_csrf={csrf_token}&selectedAuthMethod=N&username={username}&password={password}'
+    try:
+        path = soup.find("input", {"name": "path"})["value"]
+        partID = soup.find("input", {"name": "partID"})["value"]
+        authVersion = soup.find("input", {"name": "authVersion"})["value"]
+        csrf_token = soup.find("input", {"name": "_csrf"})["value"]
+    except TypeError:
+        raise ValueError("Erro ao obter valores do formulário. O HTML pode ter mudado.")
 
-headers.update({
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Origin': 'https://www.acesso.gov.pt',
-    'Referer': 'https://www.acesso.gov.pt/v2/loginForm?partID=PFAP&path=/geral/dashboard',
-    'Sec-Fetch-Site': 'same-site',
-})
+    data = f'path={path}&partID={partID}&authVersion={authVersion}&_csrf={csrf_token}&selectedAuthMethod=N&username={nif}&password={password}'
 
-response = session.post('https://www.acesso.gov.pt/v2/login', cookies=session.cookies, data=data, headers=headers)
-################################################################################################################################
-#CHAMADA 4
-################################################################################################################################
-# Construção do Payload (data)
-soup = BeautifulSoup(response.text, 'html.parser')
+    headers.update({
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://www.acesso.gov.pt',
+        'Referer': 'https://www.acesso.gov.pt/v2/loginForm?partID=PFAP&path=/geral/dashboard',
+    })
 
-data = {
-    "ssoID": soup.find("input", {"name": "ssoID"})["value"],
-    "signParameters": soup.find("input", {"name": "signParameters"})["value"],
-    "tv": soup.find("input", {"name": "tv"})["value"],
-    "idType": soup.find("input", {"name": "idType"})["value"],
-    "partID": soup.find("input", {"name": "partID"})["value"],
-    "sign": soup.find("input", {"name": "sign"})["value"],
-    "userName": soup.find("input", {"name": "userName"})["value"],
-    "userID": soup.find("input", {"name": "userID"})["value"],
-    "tc": soup.find("input", {"name": "tc"})["value"],
-    "credentialID": soup.find("input", {"name": "credentialID"})["value"],
-    "id": soup.find("input", {"name": "id"})["value"],
-    "authMethod": soup.find("input", {"name": "authMethod"})["value"],
-    "authQAALevel": soup.find("input", {"name": "authQAALevel"})["value"],
-}
+    response = session.post('https://www.acesso.gov.pt/v2/login', data=data, headers=headers)
 
-headers.update({
-    'Referer': 'https://www.acesso.gov.pt',
-    'Sec-Fetch-Site': 'cross-site',
-})
+    # CHAMADA 4
+    soup = BeautifulSoup(response.text, 'html.parser')
 
-cookie_value = session.cookies['autentica_JSessionID']  # Isso já é o valor da cookie
-# Salvar a cookie num ficheiro
-with open('autentica_JSessionID.pkl', 'wb') as f:
-    pickle.dump(cookie_value, f)
+    try:
+        data = {
+            "ssoID": soup.find("input", {"name": "ssoID"})["value"],
+            "signParameters": soup.find("input", {"name": "signParameters"})["value"],
+            "tv": soup.find("input", {"name": "tv"})["value"],
+            "idType": soup.find("input", {"name": "idType"})["value"],
+            "partID": soup.find("input", {"name": "partID"})["value"],
+            "sign": soup.find("input", {"name": "sign"})["value"],
+            "userName": soup.find("input", {"name": "userName"})["value"],
+            "userID": soup.find("input", {"name": "userID"})["value"],
+            "tc": soup.find("input", {"name": "tc"})["value"],
+            "credentialID": soup.find("input", {"name": "credentialID"})["value"],
+            "id": soup.find("input", {"name": "id"})["value"],
+            "authMethod": soup.find("input", {"name": "authMethod"})["value"],
+            "authQAALevel": soup.find("input", {"name": "authQAALevel"})["value"],
+        }
+    except TypeError:
+        raise ValueError("Erro ao obter dados do formulário após o login.")
 
-session.cookies.clear() # Não são necessárias as cookies desta resposta
+    headers.update({
+        'Referer': 'https://www.acesso.gov.pt',
+        'Sec-Fetch-Site': 'cross-site',
+    })
 
-response = session.post('https://sitfiscal.portaldasfinancas.gov.pt/geral/dashboard', data=data, headers=headers, allow_redirects=False)
-################################################################################################################################
-#CHAMADA 5
-################################################################################################################################
-response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/geral/', cookies=session.cookies, headers=headers, allow_redirects=False)
-################################################################################################################################
-#CHAMADA 6
-################################################################################################################################
-response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/geral/home', cookies=session.cookies, headers=headers)
-################################################################################################################################
+    cookie_value = session.cookies.get('autentica_JSessionID', None)
+    if not cookie_value:
+        raise ValueError("Erro: Cookie 'autentica_JSessionID' não foi encontrada.")
 
-# Verificar se a resposta foi bem-sucedida (status 200)
-if response.status_code == 200:
-    with open('session.pkl', 'wb') as f:
-        pickle.dump(session, f)
-    print("Login realizado com sucesso e sessão salva.")
-else:
-    print("Erro ao comunicar.")
+    with open(jsessionid_file_path, 'wb') as f:
+        pickle.dump(cookie_value, f)
+
+    session.cookies.clear()
+
+    response = session.post('https://sitfiscal.portaldasfinancas.gov.pt/geral/dashboard', data=data, headers=headers, allow_redirects=False)
+
+    # CHAMADA FINAL
+    response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/geral/home', cookies=session.cookies, headers=headers)
+
+    if response.status_code == 200:
+        try:
+            with open(session_file_path, 'wb') as f:
+                pickle.dump(session, f)
+            print("Sessão salva com sucesso.")
+        except Exception as e:
+            print(f"Erro ao salvar a sessão: {e}")
+    else:
+        print("Erro ao comunicar com o sistema.")
+
+except Exception as e:
+    print(f"Ocorreu um erro inesperado: {e}")
