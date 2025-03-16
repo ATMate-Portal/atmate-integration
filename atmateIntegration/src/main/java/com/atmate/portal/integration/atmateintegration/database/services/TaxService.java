@@ -4,6 +4,9 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.Client
 import com.atmate.portal.integration.atmateintegration.database.entitites.Tax;
 import com.atmate.portal.integration.atmateintegration.database.entitites.TaxType;
 import com.atmate.portal.integration.atmateintegration.database.repos.TaxRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -36,8 +39,22 @@ public class TaxService {
         return taxRepository.findById(id);
     }
 
-    public Optional<Tax> getTaxByClientAndType(Client client, TaxType taxType){
-        return taxRepository.findTaxByClientAndTaxType(client, taxType);
+    public Tax getTaxByClientAndType(Client client, TaxType taxType, String identificador) throws JsonProcessingException {
+
+        if(taxType.getId().equals(1)){
+            List<Tax> taxClientList = taxRepository.findTaxByClientAndTaxType(client, taxType);
+
+            for(Tax clientTax : taxClientList){
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
+                String matricula = rootNode.get("Matrícula").asText();
+
+                if(matricula.equals(identificador)){
+                    return clientTax;
+                }
+            }
+        }
+        return null;
     }
 
     // Atualizar um imposto

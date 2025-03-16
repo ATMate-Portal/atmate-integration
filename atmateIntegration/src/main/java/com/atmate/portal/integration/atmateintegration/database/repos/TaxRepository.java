@@ -6,12 +6,13 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.TaxTyp
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface TaxRepository extends JpaRepository<Tax, Integer> {
     // Você pode adicionar métodos personalizados aqui, se necessário
 
-    public Optional<Tax> findTaxByClientAndTaxType(Client client, TaxType taxType);
+    public List<Tax> findTaxByClientAndTaxType(Client client, TaxType taxType);
 }
 

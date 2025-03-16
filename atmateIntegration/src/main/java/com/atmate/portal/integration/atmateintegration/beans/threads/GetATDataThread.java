@@ -6,6 +6,7 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.TaxTyp
 import com.atmate.portal.integration.atmateintegration.database.services.TaxService;
 import com.atmate.portal.integration.atmateintegration.database.services.TaxTypeService;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,12 +128,25 @@ public class GetATDataThread implements Runnable {
             for (Map<String, String> formattedMap : formattedList) {
                 String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
 
-                Tax newClientTax = new Tax();
-                newClientTax.setTaxType(taxType.orElse(null));
-                newClientTax.setTaxData(formattedJSON);
-                newClientTax.setClient(client);
-                taxService.createTax(newClientTax);
-                logger.info("Novo imposto criado para o cliente: {}", client.getName());
+                //Extrair matricula
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(formattedJSON);
+                String matricula = rootNode.get("Matrícula").asText();
+
+                Tax clientTax = taxService.getTaxByClientAndType(client, taxType.orElse(null), matricula);
+
+                if (clientTax!=null) {
+                    clientTax.setTaxData(formattedJSON); // Atualize apenas os campos necessários
+                    taxService.updateTax(clientTax.getId(), clientTax);
+                    logger.info("Imposto atualizado para o cliente: {}", client.getName());
+                } else {
+                    Tax newClientTax = new Tax();
+                    newClientTax.setTaxType(taxType.orElse(null));
+                    newClientTax.setTaxData(formattedJSON);
+                    newClientTax.setClient(client);
+                    taxService.createTax(newClientTax);
+                    logger.info("Novo imposto criado para o cliente: {}", client.getName());
+                }
             }
 
             process.waitFor();
