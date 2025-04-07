@@ -186,8 +186,9 @@ data = []
 # Iterar sobre todas as linhas <tr> com a classe 'iTR' dentro da tabela 'iT'
 for row in tabela_iT.find_all('tr', class_='iTR'):
     cols = row.find_all('td')[:-1]  # Remove a última coluna
-    row_data = [col.get_text(strip=True).replace("\xa0", " ").replace("€", "EUR") for col in cols]
-    data.append(row_data)
+    if cols:  # Verifica se a lista de colunas não está vazia
+        row_data = [col.get_text(strip=True).replace("\xa0", " ").replace("€", "EUR") for col in cols]
+        data.append(row_data)
 
 # Criar dicionário com headers e dados
 result = {"headers": headers, "rows": data}

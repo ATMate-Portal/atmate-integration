@@ -22,12 +22,16 @@ public class GSONFormatter {
 
         List<Map<String, String>> resultList = new ArrayList<>();
 
-        for (JsonNode row : rows) {
-            Map<String, String> transformedMap = new HashMap<>();
-            for (int i = 0; i < headers.size(); i++) {
-                transformedMap.put(headers.get(i).asText(), row.get(i).asText());
+        if (null != rows){
+            for (JsonNode row : rows) {
+                Map<String, String> transformedMap = new HashMap<>();
+                for (int i = 0; i < headers.size(); i++) {
+                    if (null != row.get(i)) {
+                        transformedMap.put(headers.get(i).asText(), row.get(i).asText());
+                    }
+                }
+                resultList.add(transformedMap);
             }
-            resultList.add(transformedMap);
         }
 
         return resultList;
