@@ -5,7 +5,7 @@ import os
 
 nif = os.environ.get("NIF")
 if not nif:
-    nif = "249428520"
+    nif = "226144275"
 scriptPath = os.environ.get("SCRIPT_PATH")
 if not scriptPath:
     scriptPath = "src/main/resources/scripts/"
@@ -15,7 +15,7 @@ jsessionid_file_name = f'JSessionID_{nif}.pkl'
 
 session_file_path = os.path.join(scriptPath, session_file_name)
 jsessionid_file_path = os.path.join(scriptPath, jsessionid_file_name)
- 
+
 # Carregar a sessão salva
 with open(session_file_path, 'rb') as f:
     session = pickle.load(f)
@@ -45,6 +45,7 @@ response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/iuc', cookies
 ################################################################################################################################
 #CHAMADA 2
 ################################################################################################################################
+
 
 with open(jsessionid_file_path, 'rb') as f:
     cookie_value = pickle.load(f)
@@ -96,10 +97,44 @@ response = session.get('https://sitfiscal.portaldasfinancas.gov.pt/iuc', cookies
 #CHAMADA 5
 ################################################################################################################################
 
+headers = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'pt-PT,pt;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Origin': 'https://sitfiscal.portaldasfinancas.gov.pt',
+    'Pragma': 'no-cache',
+    'Referer': 'https://sitfiscal.portaldasfinancas.gov.pt/iuc',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+    'Sec-GPC': '1',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+}
+
+soup = BeautifulSoup(response.text, 'html.parser')
 data = {
+    '_csrf': soup.find("input", {"name": "_csrf"})["value"],
+}
+
+response = session.post(
+    'https://sitfiscal.portaldasfinancas.gov.pt/iuc/consultarIUC/consultarIUC',
+    cookies=session.cookies,
+    headers=headers,
+    data=data)
+
+
+
+data.update({
     'action': 'consultaVeiculos',
     'ano': '',
-}
+})
 
 response = session.post(
     'https://sitfiscal.portaldasfinancas.gov.pt/iuc/consultarIUC/consultaIUCANO',
@@ -113,6 +148,7 @@ soup = BeautifulSoup(response.text, 'html.parser')
 
 # Encontrar a tabela
 table = soup.find('table', {'id': 'LST_VEICULOS_CONSULTA_ID'})
+
 
 # Obter os headers
 headers = [th.get_text(strip=True) for th in table.find('thead').find_all('th')[:-1]]  # Remove a última coluna
