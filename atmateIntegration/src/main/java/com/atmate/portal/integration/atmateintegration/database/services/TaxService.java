@@ -41,19 +41,36 @@ public class TaxService {
 
     public Tax getTaxByClientAndType(Client client, TaxType taxType, String identificador) throws JsonProcessingException {
 
-        if(taxType.getId().equals(1)){
-            List<Tax> taxClientList = taxRepository.findTaxByClientAndTaxType(client, taxType);
+        List<Tax> taxClientList = taxRepository.findTaxByClientAndTaxType(client, taxType);
 
-            for(Tax clientTax : taxClientList){
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
-                String matricula = rootNode.get("Matrícula").asText();
+        switch(taxType.getId()){
+            case 1:
 
-                if(matricula.equals(identificador)){
-                    return clientTax;
+                for(Tax clientTax : taxClientList){
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
+                    String matricula = rootNode.get("Matrícula").asText();
+
+                    if(matricula.equals(identificador)){
+                        return clientTax;
+                    }
                 }
-            }
+                break;
+            case 5:
+
+                for(Tax clientTax : taxClientList){
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
+                    String notaCobranca = rootNode.get("Nº Nota Cob.").asText();
+
+                    if(notaCobranca.equals(identificador)){
+                        return clientTax;
+                    }
+                }
+                break;
         }
+
+
         return null;
     }
 

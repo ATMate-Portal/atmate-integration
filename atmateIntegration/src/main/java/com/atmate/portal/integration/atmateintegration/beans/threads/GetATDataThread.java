@@ -53,6 +53,8 @@ public class GetATDataThread implements Runnable {
         logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
         getIUC(client.getNif());
         logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
+        getIMI(client.getNif());
+        logger.info("--------------- IMI Obtido para o cliente: {} ---------------", client.getName());
     }
 
     public void setClient(Client client) {
@@ -121,7 +123,7 @@ public class GetATDataThread implements Runnable {
 
             logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
 
-            List<Map<String, String>> formattedList = gsonFormatter.formatIUCJSON(taxJSON);
+            List<Map<String, String>> formattedList = gsonFormatter.formatTaxJSON(taxJSON);
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
 
@@ -145,13 +147,71 @@ public class GetATDataThread implements Runnable {
                     newClientTax.setTaxData(formattedJSON);
                     newClientTax.setClient(client);
                     taxService.createTax(newClientTax);
-                    logger.info("Novo imposto criado para o cliente: {}", client.getName());
+                    logger.info("Novo imposto IUC criado para o cliente: {}", client.getName());
                 }
             }
 
             process.waitFor();
         } catch (Exception e) {
             logger.error("Erro ao obter o IUC para o cliente: {}", client.getName(), e);
+        }
+    }
+
+    private void getIMI(Integer nif) {
+        logger.info("Iniciando obtenção do IMI para o cliente: {}", client.getName());
+        try {
+            String atGetIMIFileName = "at_get_imi.py";
+            String taxJSON = "";
+            String scriptPath = new File(scriptAbsolutePath + atGetIMIFileName).getAbsolutePath();
+
+            ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
+            Map<String, String> environment = processBuilder.environment();
+            environment.put("NIF", String.valueOf(nif));
+            Process process = processBuilder.start();
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.ISO_8859_1));
+
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                logger.info("Saída do script de obtenção do IMI: {}", line);
+                output.append(line);
+            }
+            taxJSON = output.toString();
+
+            logger.info("IMI do cliente {} obtido: {}", client.getName(), taxJSON);
+
+            List<Map<String, String>> formattedList = gsonFormatter.formatTaxJSON(taxJSON);
+
+            Optional<TaxType> taxType = taxTypeService.getTaxTypeById(5);
+
+            for (Map<String, String> formattedMap : formattedList) {
+                String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
+
+                //Extrair matricula
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(formattedJSON);
+                String notaCobranca = rootNode.get("Nº Nota Cob.").asText();
+
+                Tax clientTax = taxService.getTaxByClientAndType(client, taxType.orElse(null), notaCobranca);
+
+                if (clientTax!=null) {
+                    clientTax.setTaxData(formattedJSON); // Atualize apenas os campos necessários
+                    taxService.updateTax(clientTax.getId(), clientTax);
+                    logger.info("Imposto atualizado para o cliente: {}", client.getName());
+                } else {
+                    Tax newClientTax = new Tax();
+                    newClientTax.setTaxType(taxType.orElse(null));
+                    newClientTax.setTaxData(formattedJSON);
+                    newClientTax.setClient(client);
+                    taxService.createTax(newClientTax);
+                    logger.info("Novo imposto IMI criado para o cliente: {}", client.getName());
+                }
+            }
+
+            process.waitFor();
+        } catch (Exception e) {
+            logger.error("Erro ao obter o IMI para o cliente: {}", client.getName(), e);
         }
     }
 }

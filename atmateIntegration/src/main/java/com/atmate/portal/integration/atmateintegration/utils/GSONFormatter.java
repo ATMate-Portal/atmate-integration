@@ -15,7 +15,7 @@ public class GSONFormatter {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<Map<String, String>> formatIUCJSON(String jsonInput) throws JsonProcessingException {
+    public List<Map<String, String>> formatTaxJSON(String jsonInput) throws JsonProcessingException {
         JsonNode rootNode = objectMapper.readTree(jsonInput);
         JsonNode headers = rootNode.get("headers");
         JsonNode rows = rootNode.get("rows");
