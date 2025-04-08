@@ -50,5 +50,14 @@ public class AddressService {
         }
         addressRepository.deleteById(id);
     }
+
+    // Verificar se já existem endereços
+    public boolean existsAddressForClient(Address address) {
+        return addressRepository.existsByStreetAndZipCodeAndClient(
+                address.getStreet(),
+                address.getZipCode(),
+                address.getClient()
+        );
+    }
 }
 

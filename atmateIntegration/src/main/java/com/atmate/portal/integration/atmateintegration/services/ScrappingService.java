@@ -6,6 +6,8 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.Client
 import com.atmate.portal.integration.atmateintegration.database.services.AtCredentialService;
 import com.atmate.portal.integration.atmateintegration.database.services.ClientService;
 import com.atmate.portal.integration.atmateintegration.utils.ProfileUtil;
+import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
+import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +57,26 @@ public class ScrappingService {
             } else {
                 logger.info("Perfil ativo é DEV, não será feito scrapping.");
             }
+        }
+    }
+
+    public void syncClient(Client client) throws Exception {
+        if (profileUtil.isDev()) {
+            logger.info("A iniciar sync do cliente NIF: " + client.getNif());
+            AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
+            if (atCredential != null) {
+                // Obter uma nova instância de GetATDataThread do ApplicationContext
+                GetATDataThread getATDataThread = applicationContext.getBean(GetATDataThread.class);
+                // Configurar a instância
+                getATDataThread.setClient(client);
+                String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
+                getATDataThread.setPassword(decryptedPassword);
+                // Iniciar a thread
+                Thread thread = new Thread(getATDataThread);
+                thread.start();
+            }
+        } else {
+            logger.info("Perfil ativo é DEV, não será feito scrapping.");
         }
     }
 }

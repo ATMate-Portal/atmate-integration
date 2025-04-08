@@ -29,11 +29,11 @@ public class Address {
     @Size(max = 255, message = "A rua deve ter no máximo 255 caracteres")
     private String street;
 
-    @Column(length = 10)
+    @Column(name = "door_number", length = 10)
     @Size(max = 10, message = "O número da porta deve ter no máximo 10 caracteres")
     private String doorNumber;
 
-    @Column(length = 20)
+    @Column(name = "zip_code", length = 20)
     @Size(max = 20, message = "O código postal deve ter no máximo 20 caracteres")
     private String zipCode;
 

@@ -50,4 +50,12 @@ public class ContactService {
         }
         contactRepository.deleteById(id);
     }
+
+    public boolean existsContactForClient(Contact contact) {
+        return contactRepository.existsByContactAndContactTypeAndClient(
+                contact.getContact(),
+                contact.getContactType(),
+                contact.getClient()
+        );
+    }
 }
