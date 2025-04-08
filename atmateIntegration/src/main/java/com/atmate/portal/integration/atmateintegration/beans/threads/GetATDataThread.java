@@ -62,10 +62,10 @@ public class GetATDataThread implements Runnable {
         logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
         getClientPersonalData(client.getNif());
         logger.info("--------------- Obtidos dados do cliente: {} ---------------", client.getName());
-        //getIUC(client.getNif());
-        //logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
-        //getIMI(client.getNif());
-        //logger.info("--------------- IMI Obtido para o cliente: {} ---------------", client.getName());
+        getIUC(client.getNif());
+        logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
+        getIMI(client.getNif());
+        logger.info("--------------- IMI Obtido para o cliente: {} ---------------", client.getName());
     }
 
     public void setClient(Client client) {
