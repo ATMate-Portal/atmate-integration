@@ -159,7 +159,7 @@ headers = {
 
 data = {
     'body': '/ca/notasCobrancaIMI.jsp',
-    'ano': '2023',
+    'ano': '2024',
 }
 
 response = session.post('https://www.portaldasfinancas.gov.pt/pt/main.jsp', cookies=session.cookies, headers=headers, data=data)
