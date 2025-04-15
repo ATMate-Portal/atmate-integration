@@ -1,11 +1,12 @@
 package com.atmate.portal.integration.atmateintegration.beans.threads;
 
-import com.atmate.portal.integration.atmateintegration.database.entitites.Client;
-import com.atmate.portal.integration.atmateintegration.database.entitites.Tax;
-import com.atmate.portal.integration.atmateintegration.database.entitites.TaxType;
-import com.atmate.portal.integration.atmateintegration.database.services.TaxService;
-import com.atmate.portal.integration.atmateintegration.database.services.TaxTypeService;
+import com.atmate.portal.integration.atmateintegration.database.ClientDataDTO;
+import com.atmate.portal.integration.atmateintegration.database.entitites.*;
+import com.atmate.portal.integration.atmateintegration.database.services.*;
+import com.atmate.portal.integration.atmateintegration.utils.ClientDataUtils;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
+import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
+import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,13 @@ public class GetATDataThread implements Runnable {
     @Autowired
     private GSONFormatter gsonFormatter;
 
+    @Autowired
+    ClientService clientService;
+    @Autowired
+    AddressService addressService;
+    @Autowired
+    ContactService contactService;
+
     private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
     @Autowired
@@ -51,6 +60,8 @@ public class GetATDataThread implements Runnable {
     public void run() {
         doLoginAT(client.getNif(), password);
         logger.info("--------------- Login Feito para o cliente: {} ---------------", client.getName());
+        getClientPersonalData(client.getNif());
+        logger.info("--------------- Obtidos dados do cliente: {} ---------------", client.getName());
         getIUC(client.getNif());
         logger.info("--------------- IUC Obtido para o cliente: {} ---------------", client.getName());
         getIMI(client.getNif());
@@ -212,6 +223,88 @@ public class GetATDataThread implements Runnable {
             process.waitFor();
         } catch (Exception e) {
             logger.error("Erro ao obter o IMI para o cliente: {}", client.getName(), e);
+        }
+    }
+
+    public void getClientPersonalData(Integer nif){
+        logger.info("Iniciando obtenção de dados pessoais para o cliente: {}", client.getNif());
+        try {
+            String atGetClientData = "at_get_cliente_info.py";
+            String taxJSON = "";
+            String scriptPath = new File(scriptAbsolutePath + atGetClientData).getAbsolutePath();
+
+            ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
+            Map<String, String> environment = processBuilder.environment();
+            environment.put("NIF", String.valueOf(nif));
+            Process process = processBuilder.start();
+
+            //Obter erros da execução python
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8));
+            StringBuilder errorOutput = new StringBuilder();
+            String errorLine;
+            while ((errorLine = errorReader.readLine()) != null) {
+                logger.error("⚠️ ERRO do script: {}", errorLine);
+                errorOutput.append(errorLine).append("\n");
+            }
+            if(!errorOutput.isEmpty())
+                throw new ATMateException(ErrorEnum.SCRAPING_PYTHON_ERROR);
+
+            //Se nao existir erros, ler output do python
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                //logger.info("Saída do script de obter dados cliente: {}", line);
+                taxJSON = line;
+            }
+
+            if (process.waitFor() != 0) {
+                logger.error("Erro ao executar o script de obter dados cliente para o cliente com NIF: {}", nif);
+                throw new ATMateException(ErrorEnum.SCRAPING_PERSONAL_DATA_ERROR);
+            }
+
+            //Converter dados vindos do python para objeto
+            ObjectMapper mapper = new ObjectMapper();
+            ClientDataDTO clientData = mapper.readValue(taxJSON, ClientDataDTO.class);
+
+            //Client Part
+            this.client.setName(clientData.getNome());
+            this.client.setGender(ClientDataUtils.formatGender(clientData.getSexo()));
+            this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
+            this.client.setNationality(clientData.getNacionalidade());
+            clientService.updateClient(this.client.getId(), client);
+
+            //Address Part
+            Address address = ClientDataUtils.buildAddress(this.client, clientData);
+            if (!addressService.existsAddressForClient(address)) {
+                addressService.createAddress(address);
+            } else {
+                logger.info("Morada já existente para cliente {}", address.getClient().getNif());
+            }
+
+            //Contacts Part
+            String phone = clientData.getTelefone();
+            if (!phone.isBlank() && !phone.trim().equals("-")) {
+                Contact phonef = ClientDataUtils.buildContactPhone(this.client, phone);
+                if (!contactService.existsContactForClient(phonef)) {
+                    contactService.createContact(phonef);
+                } else {
+                    logger.info("Telefone já existe para cliente {}: {}", client.getNif(), phone);
+                }
+            }
+
+            String email = clientData.getEmail();
+            if (!email.isBlank() && !email.trim().equals("-")) {
+                Contact emailf = ClientDataUtils.buildContactEmail(this.client, email);
+                if (!contactService.existsContactForClient(emailf)) {
+                    contactService.createContact(emailf);
+                } else {
+                    logger.info("Email já existe para cliente {}: {}", client.getNif(), email);
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Erro ao obter os dados do cliente: {}", client.getNif(), e);
+            throw new ATMateException(ErrorEnum.SCRAPING_PERSONAL_DATA_ERROR);
         }
     }
 }
