@@ -61,7 +61,7 @@ public class ScrappingService {
     }
 
     public void syncClient(Client client) throws Exception {
-        if (profileUtil.isDev()) {
+        if (!profileUtil.isDev()) {
             logger.info("A iniciar sync do cliente NIF: " + client.getNif());
             AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
             if (atCredential != null) {
