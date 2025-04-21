@@ -76,6 +76,7 @@ public class ScrappingService {
                 Thread thread = new Thread(getATDataThread);
                 thread.start();
             }
+            logger.info("Scrapping finalizado com sucesso.");
         } else {
             logger.info("Perfil ativo é DEV, não será feito scrapping.");
         }

@@ -242,6 +242,8 @@ public class GetATDataThread implements Runnable {
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetClientData).getAbsolutePath();
 
+            logger.info("É para obter o tipo da AT: " + getTypeFromAT);
+
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
             environment.put("NIF", String.valueOf(nif));
@@ -282,7 +284,10 @@ public class GetATDataThread implements Runnable {
             this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
             this.client.setNationality(clientData.getNacionalidade());
 
+            logger.info("Foi encontrada atividade exercida: " + clientData.isAtividade_exercida_encontrada());
+
             if(clientData.isAtividade_exercida_encontrada()){
+                logger.info("A atualizar tipo de cliente para ENI.");
                 Optional<ClientType> clientType = clientTypeService.getClientTypeById(1);
                 this.client.setClientType(clientType.orElse(null));
             }
