@@ -276,6 +276,7 @@ public class GetATDataThread implements Runnable {
 
             //Converter dados vindos do python para objeto
             ObjectMapper mapper = new ObjectMapper();
+            logger.info("Informação do cliente: " + taxJSON);
             ClientDataDTO clientData = mapper.readValue(taxJSON, ClientDataDTO.class);
 
             //Client Part
