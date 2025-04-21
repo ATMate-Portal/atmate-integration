@@ -11,10 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -32,13 +29,13 @@ public class ClientController {
     private static final Logger logger = LoggerFactory.getLogger(ClientController.class);
 
     @GetMapping("/sync/{clientId}")
-    public ResponseEntity<?> sync(@PathVariable Integer clientId) throws Exception {
+    public ResponseEntity<?> sync(@PathVariable Integer clientId, @RequestParam(value = "getTypeFromAT", required = false, defaultValue = "false") boolean getTypeFromAT) throws Exception {
         logger.info("Syncing client...");
         Client client = clientService.getClientById(clientId)
                 .orElseThrow(() -> new ATMateException(ErrorEnum.CLIENT_NOT_FOUND));
         logger.info("Syncing client with NIF = " + client.getNif());
 
-        scrappingService.syncClient(client);
+        scrappingService.syncClient(client, getTypeFromAT);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

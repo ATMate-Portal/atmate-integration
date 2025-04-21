@@ -32,6 +32,8 @@ public class GetATDataThread implements Runnable {
 
     private Client client;
     private String password;
+    private boolean getTypeFromAT;
+
     @Value("${python.script.path}")
     private String scriptAbsolutePath;
     @Value("${python.path}")
@@ -47,6 +49,9 @@ public class GetATDataThread implements Runnable {
     AddressService addressService;
     @Autowired
     ContactService contactService;
+    @Autowired
+    ClientTypeService clientTypeService;
+
 
     private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
@@ -74,6 +79,10 @@ public class GetATDataThread implements Runnable {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public void setGetTypeFromAT(boolean getTypeFromAT) {
+        this.getTypeFromAT = getTypeFromAT;
     }
 
     private void doLoginAT(Integer nif, String password) {
@@ -236,6 +245,7 @@ public class GetATDataThread implements Runnable {
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
             environment.put("NIF", String.valueOf(nif));
+            environment.put("getTypeFromAT", String.valueOf(this.getTypeFromAT));
             Process process = processBuilder.start();
 
             //Obter erros da execução python
@@ -271,6 +281,12 @@ public class GetATDataThread implements Runnable {
             this.client.setGender(ClientDataUtils.formatGender(clientData.getSexo()));
             this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
             this.client.setNationality(clientData.getNacionalidade());
+
+            if(clientData.isAtividade_exercida_encontrada()){
+                Optional<ClientType> clientType = clientTypeService.getClientTypeById(1);
+                this.client.setClientType(clientType.orElse(null));
+            }
+
             clientService.updateClient(this.client.getId(), client);
 
             //Address Part

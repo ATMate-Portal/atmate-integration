@@ -10,6 +10,10 @@ if not nif:
 scriptPath = os.environ.get("SCRIPT_PATH")
 if not scriptPath:
     scriptPath = "src/main/resources/scripts/"
+getTypeFromAT = os.environ.get("getTypeFromAT")
+if not getTypeFromAT:
+    getTypeFromAT = "false"
+
 
 session_file_name = f'session_{nif}.pkl'
 jsessionid_file_name = f'JSessionID_{nif}.pkl'
@@ -68,13 +72,23 @@ if redirect_url and redirect_url.startswith("/"):
 session.get(redirect_url, headers={'User-Agent': 'Mozilla/5.0'})
 
 # CHAMADA 5 - GET para presentation?httpRefererTransId=...
-session.get(
+response = session.get(
     'https://sitfiscal.portaldasfinancas.gov.pt/integrada/presentation',
     params={
         'httpRefererTransId': 'e2383a35-00ce-44ea-8ff5-97c9918d6ce2'  # Este valor pode variar dinamicamente
     },
     headers={'User-Agent': 'Mozilla/5.0'}
 )
+
+soup = BeautifulSoup(response.text, "html.parser")
+
+# Dicionário final a devolver
+dados_cliente = {}
+
+# Adicionar a informação da "Atividade Exercida" ao dicionário, se getTypeFromAT for True
+if getTypeFromAT:
+    atividade_exercida_encontrada = "Atividade Exercida" in soup.get_text()
+    dados_cliente["atividade_exercida_encontrada"] = atividade_exercida_encontrada
 
 # CHAMADA 6 - GET final com queryStringS e hmac
 response = session.get(
@@ -104,8 +118,7 @@ campos_desejados = {
     "E-mail": "email"
 }
 
-# Dicionário final a devolver
-dados_cliente = {}
+
 
 # Iterar sobre todos os <dl> e preencher o dicionário
 for dl in soup.find_all("dl"):

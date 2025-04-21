@@ -60,7 +60,7 @@ public class ScrappingService {
         }
     }
 
-    public void syncClient(Client client) throws Exception {
+    public void syncClient(Client client, boolean getTypeFromAT) throws Exception {
         if (!profileUtil.isDev()) {
             logger.info("A iniciar sync do cliente NIF: " + client.getNif());
             AtCredential atCredential = atCredentialService.getCredentialsByClientId(client);
@@ -69,6 +69,7 @@ public class ScrappingService {
                 GetATDataThread getATDataThread = applicationContext.getBean(GetATDataThread.class);
                 // Configurar a instância
                 getATDataThread.setClient(client);
+                getATDataThread.setGetTypeFromAT(getTypeFromAT);
                 String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
                 getATDataThread.setPassword(decryptedPassword);
                 // Iniciar a thread
