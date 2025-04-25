@@ -9,6 +9,9 @@ import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
 import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import com.google.gson.JsonParser;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -143,17 +148,42 @@ public class GetATDataThread implements Runnable {
 
             logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
 
-            List<Map<String, String>> formattedList = gsonFormatter.formatTaxJSON(taxJSON);
+            List<Map<String, String>> formattedList = gsonFormatter.formatIUCTaxJSON(taxJSON);
+
+            com.google.gson.JsonObject jsonObject = JsonParser.parseString(taxJSON).getAsJsonObject();
+            JsonArray detalhesVeiculos = jsonObject.getAsJsonArray("detalhes_veiculos");
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
 
             for (Map<String, String> formattedMap : formattedList) {
-                String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
+                String matricula = formattedMap.get("Matrícula");
 
-                //Extrair matricula
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode rootNode = mapper.readTree(formattedJSON);
-                String matricula = rootNode.get("Matrícula").asText();
+                // Procurar o veículo correspondente em detalhes_veiculos
+                JsonObject matchingVehicle = null;
+                for (int i = 0; i < detalhesVeiculos.size(); i++) {
+                    com.google.gson.JsonObject vehicle = detalhesVeiculos.get(i).getAsJsonObject();
+                    String vehicleMatricula = vehicle.get("matricula").getAsString();
+                    if (vehicleMatricula.equals(matricula)) {
+                        matchingVehicle = vehicle;
+                        break;
+                    }
+                }
+
+                // Criar um novo mapa para combinar resumo_iuc e detalhes_veiculo
+                Map<String, Object> combinedMap = new HashMap<>(formattedMap);
+
+                // Adicionar detalhes do veículo, se encontrado
+                if (matchingVehicle != null) {
+                    // Converter JsonObject para Map para inclusão no JSON
+                    Map<String, Object> vehicleDetails = new Gson().fromJson(matchingVehicle, Map.class);
+                    combinedMap.put("detalhes_veiculo", vehicleDetails);
+                } else {
+                    combinedMap.put("detalhes_veiculo", Map.of("error", "Veículo não encontrado para matrícula: " + matricula));
+                }
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                // Converter o mapa combinado para JSON
+                String formattedJSON = objectMapper.writeValueAsString(combinedMap);
 
                 Tax clientTax = taxService.getTaxByClientAndType(client, taxType.orElse(null), matricula);
 

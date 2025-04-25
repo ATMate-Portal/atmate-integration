@@ -146,9 +146,13 @@ response = session.post(
 # Criar objeto BeautifulSoup
 soup = BeautifulSoup(response.text, 'html.parser')
 
+button_elements = soup.findAll('button', {'id': 'btnConsultVeic'})
+
+# Extrair o valor de cada botão
+button_values = [button.get('value') for button in button_elements]
+
 # Encontrar a tabela
 table = soup.find('table', {'id': 'LST_VEICULOS_CONSULTA_ID'})
-
 
 # Obter os headers
 headers = [th.get_text(strip=True) for th in table.find('thead').find_all('th')[:-1]]  # Remove a última coluna
@@ -165,11 +169,68 @@ for row in table.find('tbody').find_all('tr'):
 # Criar dicionário com headers e dados
 result = {"headers": headers, "rows": data}
 
-result_json = json.dumps(result, ensure_ascii=False).encode('utf-8').decode('utf-8')
-print(result_json)
+# Lista para armazenar os detalhes de todos os veículos
+all_vehicle_details = []
+
+headers = {
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Accept-Language': 'pt-PT,pt;q=0.8',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json; charset=utf-8',
+    'Pragma': 'no-cache',
+    'Referer': 'https://sitfiscal.portaldasfinancas.gov.pt/iuc/consultarIUC/consultaIUCANO',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-GPC': '1',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+    'X-Requested-With': 'XMLHttpRequest',
+    'sec-ch-ua': '"Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',}
+
+for button_value in button_values:
+    # Definir os parâmetros da requisição
+    params = {
+        'matriculaValue': button_value,
+    }
+
+    # Fazer a requisição GET
+    response = session.get(
+        'https://sitfiscal.portaldasfinancas.gov.pt/iuc/comum/consultaVeicMatricula',
+        params=params,
+        cookies=session.cookies,
+        headers=headers,
+    )
+
+    # Processar a resposta
+    if response.status_code == 200 and 'application/json' in response.headers.get('Content-Type', ''):
+        try:
+            vehicle_details = response.json()
+            # Adicionar matriculaValue aos detalhes para identificação
+            vehicle_details['matriculaValue'] = button_value
+        except json.JSONDecodeError:
+            print(f"Erro ao descodificar JSON para matriculaValue={button_value}.")
+            vehicle_details = {"error": "Falha ao obter detalhes do veículo", "matriculaValue": button_value, "raw_response": response.text}
+    else:
+        print(f"Erro para matriculaValue={button_value}: Status {response.status_code}")
+        vehicle_details = {"error": "Falha na requisição", "matriculaValue": button_value, "status_code": response.status_code}
+
+    # Adicionar os detalhes do veículo à lista
+    all_vehicle_details.append(vehicle_details)
 
 
+# Criar a estrutura final combinada
+final_combined_data = {
+    "detalhes_veiculos": all_vehicle_details,  # Lista com todos os vehicle_details
+    "resumo_iuc": result                       # Dados de resumo_iuc
+}
 
+final_json_output = json.dumps(final_combined_data, ensure_ascii=False, indent=4)
+
+# Imprimir o resultado final
+print(final_json_output)
 
 
 #for cookie in session.cookies:

@@ -15,6 +15,29 @@ public class GSONFormatter {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    public List<Map<String, String>> formatIUCTaxJSON(String jsonInput) throws JsonProcessingException {
+        JsonNode rootNode = objectMapper.readTree(jsonInput);
+        JsonNode resumoIUC = rootNode.get("resumo_iuc");
+        JsonNode headers = resumoIUC.get("headers");
+        JsonNode rows = resumoIUC.get("rows");
+
+        List<Map<String, String>> resultList = new ArrayList<>();
+
+        if (null != rows){
+            for (JsonNode row : rows) {
+                Map<String, String> transformedMap = new HashMap<>();
+                for (int i = 0; i < headers.size(); i++) {
+                    if (null != row.get(i)) {
+                        transformedMap.put(headers.get(i).asText(), row.get(i).asText());
+                    }
+                }
+                resultList.add(transformedMap);
+            }
+        }
+
+        return resultList;
+    }
+
     public List<Map<String, String>> formatTaxJSON(String jsonInput) throws JsonProcessingException {
         JsonNode rootNode = objectMapper.readTree(jsonInput);
         JsonNode headers = rootNode.get("headers");
