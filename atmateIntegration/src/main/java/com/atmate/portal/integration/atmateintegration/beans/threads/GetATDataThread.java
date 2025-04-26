@@ -9,9 +9,6 @@ import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
 import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import com.google.gson.JsonParser;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,8 +32,6 @@ public class GetATDataThread implements Runnable {
 
     private Client client;
     private String password;
-    private boolean getTypeFromAT;
-
     @Value("${python.script.path}")
     private String scriptAbsolutePath;
     @Value("${python.path}")
@@ -54,9 +47,6 @@ public class GetATDataThread implements Runnable {
     AddressService addressService;
     @Autowired
     ContactService contactService;
-    @Autowired
-    ClientTypeService clientTypeService;
-
 
     private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
@@ -84,10 +74,6 @@ public class GetATDataThread implements Runnable {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    public void setGetTypeFromAT(boolean getTypeFromAT) {
-        this.getTypeFromAT = getTypeFromAT;
     }
 
     private void doLoginAT(Integer nif, String password) {
@@ -148,42 +134,17 @@ public class GetATDataThread implements Runnable {
 
             logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
 
-            List<Map<String, String>> formattedList = gsonFormatter.formatIUCTaxJSON(taxJSON);
-
-            com.google.gson.JsonObject jsonObject = JsonParser.parseString(taxJSON).getAsJsonObject();
-            JsonArray detalhesVeiculos = jsonObject.getAsJsonArray("detalhes_veiculos");
+            List<Map<String, String>> formattedList = gsonFormatter.formatTaxJSON(taxJSON);
 
             Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
 
             for (Map<String, String> formattedMap : formattedList) {
-                String matricula = formattedMap.get("Matrícula");
+                String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
 
-                // Procurar o veículo correspondente em detalhes_veiculos
-                JsonObject matchingVehicle = null;
-                for (int i = 0; i < detalhesVeiculos.size(); i++) {
-                    com.google.gson.JsonObject vehicle = detalhesVeiculos.get(i).getAsJsonObject();
-                    String vehicleMatricula = vehicle.get("matricula").getAsString();
-                    if (vehicleMatricula.equals(matricula)) {
-                        matchingVehicle = vehicle;
-                        break;
-                    }
-                }
-
-                // Criar um novo mapa para combinar resumo_iuc e detalhes_veiculo
-                Map<String, Object> combinedMap = new HashMap<>(formattedMap);
-
-                // Adicionar detalhes do veículo, se encontrado
-                if (matchingVehicle != null) {
-                    // Converter JsonObject para Map para inclusão no JSON
-                    Map<String, Object> vehicleDetails = new Gson().fromJson(matchingVehicle, Map.class);
-                    combinedMap.put("detalhes_veiculo", vehicleDetails);
-                } else {
-                    combinedMap.put("detalhes_veiculo", Map.of("error", "Veículo não encontrado para matrícula: " + matricula));
-                }
-
-                ObjectMapper objectMapper = new ObjectMapper();
-                // Converter o mapa combinado para JSON
-                String formattedJSON = objectMapper.writeValueAsString(combinedMap);
+                //Extrair matricula
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode rootNode = mapper.readTree(formattedJSON);
+                String matricula = rootNode.get("Matrícula").asText();
 
                 Tax clientTax = taxService.getTaxByClientAndType(client, taxType.orElse(null), matricula);
 
@@ -272,12 +233,9 @@ public class GetATDataThread implements Runnable {
             String taxJSON = "";
             String scriptPath = new File(scriptAbsolutePath + atGetClientData).getAbsolutePath();
 
-            logger.info("É para obter o tipo da AT: " + getTypeFromAT);
-
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
             environment.put("NIF", String.valueOf(nif));
-            environment.put("getTypeFromAT", String.valueOf(this.getTypeFromAT));
             Process process = processBuilder.start();
 
             //Obter erros da execução python
@@ -306,7 +264,6 @@ public class GetATDataThread implements Runnable {
 
             //Converter dados vindos do python para objeto
             ObjectMapper mapper = new ObjectMapper();
-            logger.info("Informação do cliente: " + taxJSON);
             ClientDataDTO clientData = mapper.readValue(taxJSON, ClientDataDTO.class);
 
             //Client Part
@@ -315,11 +272,19 @@ public class GetATDataThread implements Runnable {
             this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
             this.client.setNationality(clientData.getNacionalidade());
 
-            logger.info("Foi encontrada atividade exercida: " + clientData.isAtividade_exercida_encontrada());
+            if(String.valueOf(this.client.getNif()).startsWith("1") || String.valueOf(this.client.getNif()).startsWith("2") || String.valueOf(this.client.getNif()).startsWith("3")){
+                getTypeFromAT = true;
+            }
 
-            if(clientData.isAtividade_exercida_encontrada()){
-                logger.info("A atualizar tipo de cliente para ENI.");
+            logger.info("Cliente " + client.getName() + " | atividade exercida: " + clientData.isAtividade_exercida_encontrada() + " | Data cessacao: " + clientData.getData_cessacao() + " | getTypeFromAT: " + getTypeFromAT);
+
+            if(clientData.isAtividade_exercida_encontrada() && null==clientData.getData_cessacao() && getTypeFromAT){
+                logger.info("A atualizar cliente" + clientData.getNome() + " para tipo de cliente ENI.");
                 Optional<ClientType> clientType = clientTypeService.getClientTypeById(1);
+                this.client.setClientType(clientType.orElse(null));
+            }else{
+                //Garantir que fica com o tipo certo
+                Optional<ClientType> clientType = clientTypeService.getClientTypeById(4);
                 this.client.setClientType(clientType.orElse(null));
             }
 
