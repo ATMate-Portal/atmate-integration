@@ -76,6 +76,62 @@ session.get(
     headers={'User-Agent': 'Mozilla/5.0'}
 )
 
+soup = BeautifulSoup(response.text, "html.parser")
+
+# Dicionário final a devolver
+dados_cliente = {}
+
+# Adicionar a informação da "Atividade Exercida" ao dicionário, se getTypeFromAT for True
+if getTypeFromAT:
+    atividade_exercida_encontrada = "Atividade Exercida" in soup.get_text()
+    dados_cliente["atividade_exercida_encontrada"] = atividade_exercida_encontrada
+
+    if atividade_exercida_encontrada:
+        # Find the <a> tag with "Atividade Exercida" and extract href
+        atividade_link = soup.find("a", title="Consultar Atividade Exercida")
+        if atividade_link and atividade_link.get("href"):
+            # Construct the full URL
+            base_url = "https://sitfiscal.portaldasfinancas.gov.pt/integrada/"
+            full_url = base_url + atividade_link["href"]
+
+            # Headers for the request
+            headers = {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'pt-PT,pt;q=0.8',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Pragma': 'no-cache',
+                'Referer': 'https://sitfiscal.portaldasfinancas.gov.pt/integrada/presentation?httpRefererTransId=93b3e40f-44fd-4cea-b872-454570c1c858',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+                'Sec-GPC': '1',
+                'Upgrade-Insecure-Requests': '1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+                'sec-ch-ua': '"Brave";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+            }
+
+            # Make the request using the extracted URL
+            response = session.get(
+                full_url,
+                cookies=session.cookies,  # Ensure cookies is defined
+                headers=headers,
+            )
+
+            # Parse the response
+            soup_response = BeautifulSoup(response.text, "html.parser")
+
+            # Find the "Data de Cessação" element
+            cessacao_element = soup_response.find("dt", string="Data de Cessação")
+            if cessacao_element:
+                cessacao_date = cessacao_element.find_next("dd").get_text(strip=True)
+                dados_cliente["data_cessacao"] = cessacao_date if cessacao_date != "-" else None
+            else:
+                dados_cliente["data_cessacao"] = None
+
 # CHAMADA 6 - GET final com queryStringS e hmac
 response = session.get(
     'https://sitfiscal.portaldasfinancas.gov.pt/integrada/presentation',

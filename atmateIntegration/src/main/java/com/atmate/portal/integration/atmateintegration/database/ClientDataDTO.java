@@ -17,4 +17,6 @@ public class ClientDataDTO {
     private String codigo_postal;
     private String telefone;
     private String email;
+    private boolean atividade_exercida_encontrada;
+    private String data_cessacao;
 }

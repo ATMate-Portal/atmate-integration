@@ -271,6 +271,23 @@ public class GetATDataThread implements Runnable {
             this.client.setGender(ClientDataUtils.formatGender(clientData.getSexo()));
             this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
             this.client.setNationality(clientData.getNacionalidade());
+
+            if(String.valueOf(this.client.getNif()).startsWith("1") || String.valueOf(this.client.getNif()).startsWith("2") || String.valueOf(this.client.getNif()).startsWith("3")){
+                getTypeFromAT = true;
+            }
+
+            logger.info("Cliente " + client.getName() + " | atividade exercida: " + clientData.isAtividade_exercida_encontrada() + " | Data cessacao: " + clientData.getData_cessacao() + " | getTypeFromAT: " + getTypeFromAT);
+
+            if(clientData.isAtividade_exercida_encontrada() && null==clientData.getData_cessacao() && getTypeFromAT){
+                logger.info("A atualizar cliente" + clientData.getNome() + " para tipo de cliente ENI.");
+                Optional<ClientType> clientType = clientTypeService.getClientTypeById(1);
+                this.client.setClientType(clientType.orElse(null));
+            }else{
+                //Garantir que fica com o tipo certo
+                Optional<ClientType> clientType = clientTypeService.getClientTypeById(4);
+                this.client.setClientType(clientType.orElse(null));
+            }
+
             clientService.updateClient(this.client.getId(), client);
 
             //Address Part
