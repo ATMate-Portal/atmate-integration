@@ -47,6 +47,7 @@ public class ScrappingService {
                         GetATDataThread getATDataThread = applicationContext.getBean(GetATDataThread.class);
                         // Configurar a instância
                         getATDataThread.setClient(client);
+                        getATDataThread.setGetTypeFromAT(true);
                         String decryptedPassword = cryptoService.decrypt(atCredential.getPassword());
                         getATDataThread.setPassword(decryptedPassword);
                         // Iniciar a thread

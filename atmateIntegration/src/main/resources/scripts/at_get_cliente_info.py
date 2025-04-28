@@ -4,9 +4,12 @@ import json
 import os
 import sys
 
+getTypeFromAT = os.environ.get("getTypeFromAT")
+if not getTypeFromAT:
+    getTypeFromAT = True
 nif = os.environ.get("NIF")
 if not nif:
-    nif = "248102931"
+    nif = "244773483"
 scriptPath = os.environ.get("SCRIPT_PATH")
 if not scriptPath:
     scriptPath = "src/main/resources/scripts/"
@@ -65,10 +68,10 @@ redirect_url = response.headers.get("Location")
 if redirect_url and redirect_url.startswith("/"):
     redirect_url = "https://sitfiscal.portaldasfinancas.gov.pt" + redirect_url
 
-session.get(redirect_url, headers={'User-Agent': 'Mozilla/5.0'})
+response = session.get(redirect_url, headers={'User-Agent': 'Mozilla/5.0'})
 
 # CHAMADA 5 - GET para presentation?httpRefererTransId=...
-session.get(
+response = session.get(
     'https://sitfiscal.portaldasfinancas.gov.pt/integrada/presentation',
     params={
         'httpRefererTransId': 'e2383a35-00ce-44ea-8ff5-97c9918d6ce2'  # Este valor pode variar dinamicamente
@@ -159,9 +162,6 @@ campos_desejados = {
     "Telefone": "telefone",
     "E-mail": "email"
 }
-
-# Dicionário final a devolver
-dados_cliente = {}
 
 # Iterar sobre todos os <dl> e preencher o dicionário
 for dl in soup.find_all("dl"):

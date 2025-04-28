@@ -36,6 +36,7 @@ public class GetATDataThread implements Runnable {
     private String scriptAbsolutePath;
     @Value("${python.path}")
     private String pythonPath;
+    private boolean getTypeFromAT;
     TaxService taxService;
     TaxTypeService taxTypeService;
     @Autowired
@@ -47,6 +48,8 @@ public class GetATDataThread implements Runnable {
     AddressService addressService;
     @Autowired
     ContactService contactService;
+    @Autowired
+    ClientTypeService clientTypeService;
 
     private static final Logger logger = LoggerFactory.getLogger(GetATDataThread.class);
 
@@ -74,6 +77,9 @@ public class GetATDataThread implements Runnable {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+    public void setGetTypeFromAT(boolean getTypeFromAT) {
+        this.getTypeFromAT = getTypeFromAT;
     }
 
     private void doLoginAT(Integer nif, String password) {
@@ -236,6 +242,7 @@ public class GetATDataThread implements Runnable {
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
             Map<String, String> environment = processBuilder.environment();
             environment.put("NIF", String.valueOf(nif));
+            environment.put("getTypeFromAT", String.valueOf(this.getTypeFromAT));
             Process process = processBuilder.start();
 
             //Obter erros da execução python
