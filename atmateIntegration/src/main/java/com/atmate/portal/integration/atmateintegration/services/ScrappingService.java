@@ -6,15 +6,13 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.Client
 import com.atmate.portal.integration.atmateintegration.database.services.AtCredentialService;
 import com.atmate.portal.integration.atmateintegration.database.services.ClientService;
 import com.atmate.portal.integration.atmateintegration.utils.ProfileUtil;
-import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
-import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationContext;
-
+import org.springframework.context.ApplicationEventPublisher;
 import java.util.List;
 
 @Service
@@ -33,7 +31,18 @@ public class ScrappingService {
     @Autowired
     private ApplicationContext applicationContext;
 
-    @Scheduled(fixedRateString = "${scraping.delay}")
+
+    // Cron: segundo minuto hora dia-do-mês mês dia-da-semana
+    // "0 0 6 * * ?" significa:
+    // - 0 segundos
+    // - 0 minutos
+    // - 6 horas (06:00)
+    // - * (todos os dias do mês)
+    // - * (todos os meses)
+    // - ? (qualquer dia da semana - usado porque o dia do mês já é 'todos')
+    // O fuso horário "Europe/Lisbon" garante que a tarefa corre às 06:00 hora de Portugal Continental.
+    
+    @Scheduled(cron = "0 0 6 * * ?", zone = "Europe/Lisbon")
     public void executeScrape() throws Exception {
         List<Client> clients = clientService.getAllClients();
         if (clients != null && !clients.isEmpty()) {
@@ -55,6 +64,7 @@ public class ScrappingService {
                         thread.start();
                     }
                 }
+                logger.info("Scrapping finalizado com sucesso.");
             } else {
                 logger.info("Perfil ativo é DEV, não será feito scrapping.");
             }

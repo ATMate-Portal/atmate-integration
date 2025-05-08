@@ -1,6 +1,8 @@
 package com.atmate.portal.integration.atmateintegration.database.services;
 
+import com.atmate.portal.integration.atmateintegration.database.entitites.Client;
 import com.atmate.portal.integration.atmateintegration.database.entitites.Contact;
+import com.atmate.portal.integration.atmateintegration.database.entitites.ContactType;
 import com.atmate.portal.integration.atmateintegration.database.repos.ContactRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,10 @@ public class ContactService {
         contact = contactDetails;
 
         return contactRepository.save(contact);
+    }
+
+    public Contact getContactByClientAndType(Client client, ContactType contactType){
+        return contactRepository.findByClientAndContactType(client, contactType);
     }
 
     // Deletar um contato

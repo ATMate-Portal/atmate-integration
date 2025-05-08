@@ -28,6 +28,8 @@ public enum ErrorEnum {
     CLIENT_SAVE_ERROR("CLIENT-002", "Erro ao guardar cliente."),
     CLIENT_NOT_FOUND("CLIENT-003", "O cliente não existe."),
 
+    INVALID_TAX_TYPE("DATA-008", "Erro ao processar dados do imposto. Não foi encontrado esse tipo de imposto."),
+
     //SCRAPING ERROS
     SCRAPING_PERSONAL_DATA_ERROR("SCRAPING-001", "Erro scraping a obter dados do cliente"),
     SCRAPING_PYTHON_ERROR("SCRAPING-002", "Erro de código em python"),

@@ -9,6 +9,7 @@ import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
 import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -120,7 +121,7 @@ public class GetATDataThread implements Runnable {
         logger.info("Iniciando obtenção do IUC para o cliente: {}", client.getName());
         try {
             String atGetIUCFileName = "at_get_iuc.py";
-            String taxJSON = "";
+            String taxJSONFromScript; // JSON bruto do script Python
             String scriptPath = new File(scriptAbsolutePath + atGetIUCFileName).getAbsolutePath();
 
             ProcessBuilder processBuilder = new ProcessBuilder(pythonPath, scriptPath);
@@ -133,44 +134,98 @@ public class GetATDataThread implements Runnable {
             StringBuilder output = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
-                logger.info("Saída do script de obtenção do IUC: {}", line);
+                // logger.info("Saída do script de obtenção do IUC: {}", line); // Pode ser muito verboso
                 output.append(line);
             }
-            taxJSON = output.toString();
+            taxJSONFromScript = output.toString();
 
-            logger.info("IUC do cliente {} obtido: {}", client.getName(), taxJSON);
+            logger.info("IUC (JSON bruto do script) do cliente {} obtido.", client.getName());
+            // logger.debug("Conteúdo do taxJSONFromScript: {}", taxJSONFromScript); // Para depuração
 
-            List<Map<String, String>> formattedList = gsonFormatter.formatTaxJSON(taxJSON);
+            // ObjectMapper para todas as operações JSON
+            ObjectMapper objectMapper = new ObjectMapper();
 
-            Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1);
+            // Parsear o JSON bruto do script uma vez
+            JsonNode rootOfRawJson = objectMapper.readTree(taxJSONFromScript);
+            JsonNode detalhesVeiculosArrayNode = rootOfRawJson.path("detalhes_veiculos"); // Plural, como no seu JSON bruto
 
-            for (Map<String, String> formattedMap : formattedList) {
-                String formattedJSON = new ObjectMapper().writeValueAsString(formattedMap);
+            // Obter a lista de resumos formatada (como antes)
+            // Esta linha assume que gsonFormatter.formatIUCTaxJSON processa a parte "resumo_iuc" do taxJSONFromScript
+            List<Map<String, String>> formattedListResumos = gsonFormatter.formatIUCTaxJSON(taxJSONFromScript);
 
-                //Extrair matricula
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode rootNode = mapper.readTree(formattedJSON);
-                String matricula = rootNode.get("Matrícula").asText();
+            Optional<TaxType> taxType = taxTypeService.getTaxTypeById(1); // Assumindo IUC é ID 1
 
+            for (Map<String, String> resumoMap : formattedListResumos) { // resumoMap contém o resumo de um veículo
+                String matricula = resumoMap.get("Matrícula"); // Obter matrícula diretamente do resumoMap
+
+                if (matricula == null || matricula.isEmpty()) {
+                    logger.warn("Matrícula não encontrada ou vazia no resumoMap para o cliente {}: {}. A processar próximo.", client.getName(), resumoMap);
+                    continue;
+                }
+
+                // Construir o ObjectNode final que será guardado
+                ObjectNode jsonFinalParaGuardar = objectMapper.createObjectNode();
+
+                // 1. Adicionar todos os campos do resumoMap (resumo do IUC) ao JSON final
+                for (Map.Entry<String, String> entry : resumoMap.entrySet()) {
+                    jsonFinalParaGuardar.put(entry.getKey(), entry.getValue());
+                }
+
+                // 2. Encontrar e adicionar o objeto "detalhes_veiculo" (singular) correspondente
+                JsonNode detalhesDoVeiculoEspecifico = null;
+                if (detalhesVeiculosArrayNode != null && detalhesVeiculosArrayNode.isArray()) {
+                    for (JsonNode veiculoDetalheNode : detalhesVeiculosArrayNode) {
+                        // Compara a matrícula do resumo com a matrícula nos detalhes dos veículos
+                        if (veiculoDetalheNode.path("matricula").asText("").equals(matricula)) { // Usar asText("") para evitar NullPointerException
+                            detalhesDoVeiculoEspecifico = veiculoDetalheNode;
+                            break; // Encontrou os detalhes, pode sair do loop interno
+                        }
+                    }
+                }
+
+                if (detalhesDoVeiculoEspecifico != null) {
+                    // Adiciona o objeto de detalhes encontrado sob a chave "detalhes_veiculo" (singular)
+                    jsonFinalParaGuardar.set("detalhes_veiculo", detalhesDoVeiculoEspecifico.deepCopy());
+                } else {
+                    logger.warn("Detalhes do veículo não encontrados para a matrícula: {} no JSON bruto para o cliente {}. A chave 'detalhes_veiculo' não será adicionada.", matricula, client.getName());
+                    // Se o frontend SEMPRE espera a chave "detalhes_veiculo", mesmo que vazia:
+                    // jsonFinalParaGuardar.set("detalhes_veiculo", objectMapper.createObjectNode());
+                }
+
+                // Converter o JSON combinado para uma string
+                String jsonStringCompletaParaTaxData = objectMapper.writeValueAsString(jsonFinalParaGuardar);
+                // logger.debug("JSON final para matrícula {} do cliente {}: {}", matricula, client.getName(), jsonStringCompletaParaTaxData);
+
+                // Lógica original para encontrar ou criar a entidade Tax
                 Tax clientTax = taxService.getTaxByClientAndType(client, taxType.orElse(null), matricula);
 
-                if (clientTax!=null) {
-                    clientTax.setTaxData(formattedJSON); // Atualize apenas os campos necessários
+                if (clientTax != null) {
+                    clientTax.setTaxData(jsonStringCompletaParaTaxData); // ATUALIZADO: Usar o JSON combinado
                     taxService.updateTax(clientTax.getId(), clientTax);
-                    logger.info("Imposto atualizado para o cliente: {}", client.getName());
+                    logger.info("Imposto IUC atualizado para o cliente: {} e matrícula: {}", client.getName(), matricula);
                 } else {
                     Tax newClientTax = new Tax();
                     newClientTax.setTaxType(taxType.orElse(null));
-                    newClientTax.setTaxData(formattedJSON);
+                    newClientTax.setTaxData(jsonStringCompletaParaTaxData); // ATUALIZADO: Usar o JSON combinado
                     newClientTax.setClient(client);
+                    // Se a sua entidade Tax tiver um campo para a matrícula (ou outro identificador do veículo),
+                    // certifique-se de que o define aqui também.
+                    // Ex: newClientTax.setVehicleIdentifier(matricula);
                     taxService.createTax(newClientTax);
-                    logger.info("Novo imposto IUC criado para o cliente: {}", client.getName());
+                    logger.info("Novo imposto IUC criado para o cliente: {} e matrícula: {}", client.getName(), matricula);
                 }
             }
 
-            process.waitFor();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                logger.warn("O script Python de obtenção do IUC para o cliente {} terminou com código de saída: {}", client.getName(), exitCode);
+                // Considere ler o errorStream do processo para obter mais detalhes do erro do script
+            }
+
         } catch (Exception e) {
-            logger.error("Erro ao obter o IUC para o cliente: {}", client.getName(), e);
+            logger.error("Erro fatal ao obter o IUC para o cliente: {}", client.getName(), e);
+            // Dependendo da sua estratégia de tratamento de erros, pode querer propagar a exceção
+            // ou tomar outras ações.
         }
     }
 

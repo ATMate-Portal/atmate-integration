@@ -1,10 +1,15 @@
 package com.atmate.portal.integration.atmateintegration.database.services;
 
+import com.atmate.portal.integration.atmateintegration.database.entitites.Client;
 import com.atmate.portal.integration.atmateintegration.database.entitites.ClientNotification;
+import com.atmate.portal.integration.atmateintegration.database.entitites.TaxType;
 import com.atmate.portal.integration.atmateintegration.database.repos.ClientNotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +28,10 @@ public class ClientNotificationService {
         return clientNotificationRepository.save(clientNotification);
     }
 
+    public List<ClientNotification> findPendingNotificationDueToday(){
+
+        return clientNotificationRepository.findAllByStatus("PENDENTE");
+    }
     // Ler todas as notificações do cliente
     public List<ClientNotification> getAllClientNotifications() {
         return clientNotificationRepository.findAll();
@@ -31,6 +40,10 @@ public class ClientNotificationService {
     // Ler uma notificação do cliente por ID
     public Optional<ClientNotification> getClientNotificationById(Integer id) {
         return clientNotificationRepository.findById(id);
+    }
+
+    public boolean existsForClientTaxAndDate(Client client, TaxType taxType, LocalDate today){
+        return clientNotificationRepository.existsClientNotificationByClientAndTaxTypeAndAndCreateDate(client, taxType, today);
     }
 
     // Atualizar uma notificação do cliente

@@ -43,35 +43,39 @@ public class TaxService {
 
         List<Tax> taxClientList = taxRepository.findTaxByClientAndTaxType(client, taxType);
 
-        switch(taxType.getId()){
-            case 1:
+            switch (taxType.getId()) {
+                case 1:
 
-                for(Tax clientTax : taxClientList){
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
-                    String matricula = rootNode.get("Matrícula").asText();
+                    for (Tax clientTax : taxClientList) {
+                        ObjectMapper mapper = new ObjectMapper();
+                        JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
+                        String matricula = rootNode.get("Matrícula").asText();
 
-                    if(matricula.equals(identificador)){
-                        return clientTax;
+                        if (matricula.equals(identificador)) {
+                            return clientTax;
+                        }
                     }
-                }
-                break;
-            case 5:
+                    break;
+                case 5:
 
-                for(Tax clientTax : taxClientList){
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
-                    String notaCobranca = rootNode.get("Nº Nota Cob.").asText();
+                    for (Tax clientTax : taxClientList) {
+                        ObjectMapper mapper = new ObjectMapper();
+                        JsonNode rootNode = mapper.readTree(clientTax.getTaxData());
+                        String notaCobranca = rootNode.get("Nº Nota Cob.").asText();
 
-                    if(notaCobranca.equals(identificador)){
-                        return clientTax;
+                        if (notaCobranca.equals(identificador)) {
+                            return clientTax;
+                        }
                     }
-                }
-                break;
-        }
+                    break;
+            }
 
 
         return null;
+    }
+
+    public List<Tax> getTaxesByClientAndType(Client client, TaxType taxType) throws JsonProcessingException {
+        return taxRepository.findTaxByClientAndTaxType(client, taxType);
     }
 
     // Atualizar um imposto

@@ -28,6 +28,11 @@ public class ClientNotificationConfigService {
         return clientNotificationConfigRepository.findAll();
     }
 
+    // Ler todas as configurações de notificação do cliente
+    public List<ClientNotificationConfig> getAllActiveClientNotificationConfigs(boolean isActive) {
+        return clientNotificationConfigRepository.getClientNotificationConfigByIsActiveEquals(isActive);
+    }
+
     // Ler uma configuração de notificação do cliente por ID
     public Optional<ClientNotificationConfig> getClientNotificationConfigById(Integer id) {
         return clientNotificationConfigRepository.findById(id);
