@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.List;
 
 @Slf4j
@@ -109,8 +110,6 @@ public class NotificationService {
                         continue; // Próxima iteração de periodInstance
                     }
 
-                    potentialNotificationDate = LocalDate.of(2025, 5, 8);
-
                     if (potentialNotificationDate.isEqual(today)) {
                         log.info("Coincidência encontrada: Preparar notificação para cliente {}, tipo imposto {}, imposto ID {}, prazo pagº {}, data notif.: {}. (Regra: {} {} antes do prazo)",
                                 client.getId(), taxType.getDescription(), clientTax.getId(), paymentDeadline, today, periodInstance, frequency);
@@ -146,6 +145,8 @@ public class NotificationService {
                         }
                         // Se uma notificação foi criada hoje para este imposto/config, não precisamos verificar outros periodInstance para o mesmo.
                         break; // Sair do loop de periodInstance
+                    }else if(potentialNotificationDate.isBefore(today)){
+                        break;
                     }
                 } // fim loop periodInstance
             } // fim loop clientTaxList
@@ -181,21 +182,15 @@ public class NotificationService {
 
     // Métodos para gerar título e mensagem - agora recebem mais contexto
     private String getNotificationTitle(ContactType contactType, Client client, TaxType taxType, Tax tax, LocalDate paymentDeadline) {
-        String baseTitle;
-        // Assumindo que ContactType tem getDescription() para "Email", "Telefone"
-        // Se ContactType for um Enum, pode usar diretamente no switch.
-        switch (contactType.getDescription()) {
-            case "Telefone":
-                baseTitle = "Lembrete SMS ATMate:";
-                break;
-            case "Email":
-                baseTitle = "Lembrete Email ATMate:";
-                break;
-            default:
+        // Fallback
+        String baseTitle = switch (contactType.getDescription()) {
+            case "Telefone" -> "Lembrete SMS ATMate:";
+            case "Email" -> "Lembrete Email ATMate:";
+            default -> {
                 log.warn("Descrição de ContactType desconhecida para título: {}", contactType.getDescription());
-                baseTitle = DEFAULT_NOTIFICATION_TITLE; // Fallback
-        }
-        // Supondo que TaxType tem getDescription() e LocalDate.toString() é adequado.
+                yield DEFAULT_NOTIFICATION_TITLE;
+            }
+        };
         return String.format("%s %s - Prazo: %s", baseTitle, taxType.getDescription(), paymentDeadline.toString());
     }
 
@@ -207,27 +202,86 @@ public class NotificationService {
         String taxReference = tax.getIdentifier(jsonNode);
         String deadlineStr = paymentDeadline.toString();
 
-        String detailedMessage = String.format(
-                "Caro(a) %s,\n\nEste é um lembrete sobre o seu imposto '%s' (Ref: %s) com data limite de pagamento a %s.\n\nAtentamente,\nA Equipa ATMate",
-                clientName,
-                taxDescription,
-                taxReference,
-                deadlineStr
-        );
 
-        // Mensagens SMS devem ser mais curtas
-        // Supondo que TaxType tem getShortDescription() ou algo similar
-        // Fallback
         return switch (contactType.getDescription()) {
             case "Telefone" -> {
-                String shortTaxDesc = taxType.getDescription() != null ? taxType.getDescription() : taxDescription;
-                yield String.format("Lembrete ATMate: Imposto %s, prazo %s. Ref: %s.", shortTaxDesc, deadlineStr, taxReference);
+                String usedTaxDesc = taxType.getDescription() != null ? taxType.getDescription() : taxDescription;
+
+                yield String.format("ATMate Lembrete: %s prazo %s. Ref: %s.", usedTaxDesc, deadlineStr, taxReference);
+
+                // Versão alternativa com ênfase na ação/benefício
+                // yield String.format("ATMate: Pagar %s ate %s. Ref: %s. Evite coimas.", usedTaxDesc, deadlineStr, taxReference);
             }
-            case "Email" -> detailedMessage;
-            default -> {
-                log.warn("Descrição de ContactType desconhecida para mensagem: {}", contactType.getDescription());
-                yield DEFAULT_NOTIFICATION_MESSAGE;
+            case "Email" -> {
+                String subject = String.format("Lembrete ATMate: Pagamento de %s", taxDescription);
+
+                // Construir o corpo HTML com inline CSS para melhor compatibilidade
+
+                yield String.format("""
+                            <!DOCTYPE html>
+                            <html lang="pt">
+                            <head>
+                                <meta charset="UTF-8">
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <title>%s</title>
+                                <style>
+                                    body { font-family: sans-serif; line-height: 1.6; color: #333; }
+                                    .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9; }
+                                    .header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+                                    .header h1 { color: #0056b3; /* Cor da ATMate? */ margin: 0; }
+                                    .content h2 { color: #333; }
+                                    .details { margin: 20px 0; padding: 15px; background-color: #fff; border: 1px solid #eee; border-radius: 4px; }
+                                    .details p { margin: 5px 0; }
+                                    .details strong { color: #0056b3; /* Cor da ATMate? */ }
+                                    .actions { margin-top: 25px; text-align: center; }
+                                    .actions a { display: inline-block; padding: 10px 15px; background-color: #007bff; /* Cor do botão */ color: #fff; text-decoration: none; border-radius: 4px; }
+                                    .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #777; text-align: center; }
+                                    .footer p { margin: 5px 0; }
+                                </style>
+                            </head>
+                            <body>
+                                <div class="container">
+                                    <div class="header">
+                                        <h1>ATMate</h1>
+                                        <p>O seu assistente de obrigações fiscais</p>
+                                    </div>
+                                    <div class="content">
+                                        <h2>Lembrete de Pagamento de Imposto</h2>
+                                        <p>Estimado(a) %s,</p>
+                                        <p>Este é um lembrete automático sobre o prazo de pagamento de uma das suas obrigações fiscais:</p>
+                                        <div class="details">
+                                            <p><strong>Imposto:</strong> %s</p>
+                                            <p><strong>Referência:</strong> %s</p>
+                                            <p><strong>Data Limite de Pagamento:</strong> <strong style="color:#dc3545;">%s</strong></p>
+                                        </div>
+                                        <p>Recomendamos que efetue o pagamento atempadamente para evitar coimas ou juros de mora. Pode geralmente efetuar o pagamento através do Portal das Finanças, Multibanco ou Home Banking.</p>
+                                     </div>
+                                     <div class="actions">
+                                         </div>
+                                     <div class="footer">
+                                        <p>Este lembrete foi enviado com base nas suas configurações na plataforma ATMate.</p>
+                                        <p>Precisa de ajuda? Consulte a nossa <a href="%s" target="_blank">Ajuda</a> ou contacte-nos via <a href="mailto:%s">%s</a>.</p>
+                                        <p><a href="%s" target="_blank">Gerir preferências de notificação</a></p>
+                                        <p>&copy; %d ATMate. Todos os direitos reservados.</p>
+                                    </div>
+                                </div>
+                            </body>
+                            </html>
+                            """,
+                        subject, // Para o <title>
+                        clientName,
+                        taxDescription,
+                        taxReference,
+                        deadlineStr,
+                        // atmateClientAreaUrl, // Descomentar se usar o botão
+                        "http://atmate.sytes.net/help",
+                        "atmate.support@gmail.com",
+                        "atmate.support@gmail.com",
+                        "Não existe",
+                        Year.now().getValue() // Ano atual para o copyright
+                );
             }
+            default -> throw new IllegalStateException("Unexpected value: " + contactType.getDescription());
         };
     }
 

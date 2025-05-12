@@ -1,7 +1,9 @@
 package com.atmate.portal.integration.atmateintegration.controller;
 
 import com.atmate.portal.integration.atmateintegration.services.EmailSendingService;
+import com.atmate.portal.integration.atmateintegration.services.NotificationService;
 import com.atmate.portal.integration.atmateintegration.services.SmsSendingService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ public class TestController {
 
     @Autowired
     private EmailSendingService emailSendingService; // Exemplo de um serviço de SMS que você criaria
+
+    @Autowired
+    private NotificationService notificationService;
 
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
@@ -62,6 +67,16 @@ public class TestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Erro interno ao tentar enviar SMS de teste (simulado): " + e.getMessage());
         }
+    }
+
+    /**
+     * Endpoint de teste para simular o envio de um SMS.
+
+     * @return Uma resposta indicando o sucesso ou falha (simulado).
+     */
+    @GetMapping("/runNotificationConfig")
+    public void runNotificationConfig() throws JsonProcessingException {
+        notificationService.prepareNotifications();
     }
 
     /**
