@@ -172,6 +172,58 @@ for dl in soup.find_all("dl"):
         if chave in campos_desejados:
             dados_cliente[campos_desejados[chave]] = dd.get_text(strip=True)
 
+# CHAMADA 7 - Autenticação no módulo contactos (SSO)
+response = session.get(
+    'https://www.acesso.gov.pt/v2/loginForm?partID=CADP&path=/pessoal/contactos/dadosPessoais',
+    headers={'User-Agent': 'Mozilla/5.0'},
+    allow_redirects=False
+)
+
+# Extrair campos do formulário
+soup = BeautifulSoup(response.text, 'html.parser')
+form_data = {campo['name']: campo['value'] for campo in soup.find_all('input', {'name': True, 'value': True})}
+
+# CHAMADA 8 - POST para autenticar acesso ao módulo de contactos
+response = session.post(
+    'https://sitfiscal.portaldasfinancas.gov.pt/pessoal/contactos/dadosPessoais',
+    headers={
+        'User-Agent': 'Mozilla/5.0',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Origin': 'https://www.acesso.gov.pt',
+        'Referer': 'https://www.acesso.gov.pt/',
+    },
+    data=form_data,
+    allow_redirects=False
+)
+
+# CHAMADA 9 - GET final para a página com os dados de contacto
+response = session.get(
+    'https://sitfiscal.portaldasfinancas.gov.pt/pessoal/contactos/dadosPessoais',
+    headers={
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Referer': 'https://www.acesso.gov.pt/',
+    }
+)
+
+# Parse da página
+soup = BeautifulSoup(response.text, "html.parser")
+
+# Mapeamento dos campos desejados
+mapa_contactos = {
+    "Telefone": "telefone_alt",
+    "Telemóvel": "telemovel",
+    "Email": "email_alt"
+}
+
+for dl in soup.find_all("dl"):
+    dt_tags = dl.find_all("dt")
+    dd_tags = dl.find_all("dd")
+    for dt, dd in zip(dt_tags, dd_tags):
+        chave = dt.get_text(strip=True)
+        if chave in mapa_contactos:
+            dados_cliente[mapa_contactos[chave]] = dd.get_text(strip=True)
+
 # Exemplo de uso
 result_json = json.dumps(dados_cliente, ensure_ascii=False)
 sys.stdout.buffer.write(result_json.encode('utf-8'))  # ← garante byte output puro em UTF-8

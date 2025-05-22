@@ -19,4 +19,6 @@ public class ClientDataDTO {
     private String email;
     private boolean atividade_exercida_encontrada;
     private String data_cessacao;
+    private String email_alt;
+    private String telefone_alt;
 }
