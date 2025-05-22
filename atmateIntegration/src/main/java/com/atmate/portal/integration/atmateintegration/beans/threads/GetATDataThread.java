@@ -361,16 +361,7 @@ public class GetATDataThread implements Runnable {
             }
 
             //Contacts Part
-            String phone = clientData.getTelefone();
             String phone_alt = clientData.getTelefone_alt();
-            if (!phone.isBlank() && !phone.trim().equals("-")) {
-                Contact phonef = ClientDataUtils.buildContactPhone(this.client, phone);
-                if (!contactService.existsContactForClient(phonef)) {
-                    contactService.createContact(phonef);
-                } else {
-                    logger.info("Telefone já existe para cliente {}: {}", client.getNif(), phone);
-                }
-            }
             if (!phone_alt.isBlank() && !phone_alt.trim().equals("-")) {
                 Contact phone_altf = ClientDataUtils.buildContactPhone(this.client, phone_alt);
                 if (!contactService.existsContactForClient(phone_altf)) {
@@ -380,16 +371,7 @@ public class GetATDataThread implements Runnable {
                 }
             }
 
-            String email = clientData.getEmail();
             String email_alt = clientData.getEmail_alt();
-            if (!email.isBlank() && !email.trim().equals("-")) {
-                Contact emailf = ClientDataUtils.buildContactEmail(this.client, email);
-                if (!contactService.existsContactForClient(emailf)) {
-                    contactService.createContact(emailf);
-                } else {
-                    logger.info("Email já existe para cliente {}: {}", client.getNif(), email);
-                }
-            }
             if (!email_alt.isBlank() && !email_alt.trim().equals("-")) {
                 Contact email_altf = ClientDataUtils.buildContactEmail(this.client, email_alt);
                 if (!contactService.existsContactForClient(email_altf)) {
