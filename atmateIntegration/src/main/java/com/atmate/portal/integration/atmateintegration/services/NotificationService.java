@@ -45,7 +45,7 @@ public class NotificationService {
         try {
             clientNotificationConfigList = clientNotificationConfigService.getAllActiveClientNotificationConfigs(true);
         } catch (Exception e) {
-            log.error("Erro ao buscar configurações de notificação de cliente: {}", e.getMessage(), e);
+            log.info("Erro ao buscar configurações de notificação de cliente: {}", e.getMessage(), e);
             return; // Sai se não conseguir buscar as configurações
         }
 
@@ -66,11 +66,11 @@ public class NotificationService {
             try {
                 numericStartPeriod = Long.parseLong(String.valueOf(config.getStartPeriod()));
                 if (numericStartPeriod <= 0) {
-                    log.warn("startPeriod inválido (deve ser > 0): {} para config ID {}. A ignorar esta configuração.", config.getStartPeriod(), config.getId());
+                    log.info("startPeriod inválido (deve ser > 0): {} para config ID {}. A ignorar esta configuração.", config.getStartPeriod(), config.getId());
                     continue;
                 }
             } catch (NumberFormatException e) {
-                log.warn("Formato de startPeriod inválido: {} para config ID {}. A ignorar esta configuração.", config.getStartPeriod(), config.getId());
+                log.info("Formato de startPeriod inválido: {} para config ID {}. A ignorar esta configuração.", config.getStartPeriod(), config.getId());
                 continue;
             }
 
@@ -78,19 +78,19 @@ public class NotificationService {
             try {
                 clientTaxList = taxService.getTaxesByClientAndType(client, taxType);
             } catch (Exception e) {
-                log.error("Erro ao buscar impostos para cliente {} e tipo de imposto {}: {}", client.getId(), taxType.getDescription(), e.getMessage(), e);
+                log.info("Erro ao buscar impostos para cliente {} e tipo de imposto {}: {}", client.getId(), taxType.getDescription(), e.getMessage(), e);
                 continue; // Próxima configuração
             }
 
             if (clientTaxList.isEmpty()) {
-                log.debug("Nenhum imposto encontrado para cliente {} e tipo de imposto {} (config ID {}).", client.getId(), taxType.getDescription(), config.getId());
+                log.info("Nenhum imposto encontrado para cliente {} e tipo de imposto {} (config ID {}).", client.getId(), taxType.getDescription(), config.getId());
                 continue;
             }
 
             for (Tax clientTax : clientTaxList) {
                 LocalDate paymentDeadline = clientTax.getPaymentDeadline();
                 if (paymentDeadline == null) {
-                    log.warn("Imposto ID {} para cliente {} tem paymentDeadline nula. A ignorar.", clientTax.getId(), client.getId());
+                    log.info("Imposto ID {} para cliente {} tem paymentDeadline nula. A ignorar.", clientTax.getId(), client.getId());
                     continue;
                 }
 
@@ -98,7 +98,7 @@ public class NotificationService {
 
                 // Se o prazo de pagamento já passou, não há necessidade de notificar
                 if (hasPaymentDateDue) {
-                    log.debug("Prazo de pagamento {} para imposto ID {} já passou. A ignorar.", paymentDeadline, clientTax.getId());
+                    log.info("Prazo de pagamento {} para imposto ID {} já passou. A ignorar.", paymentDeadline, clientTax.getId());
                     continue;
                 }
 
@@ -108,7 +108,7 @@ public class NotificationService {
                     try {
                         potentialNotificationDate = calculateSpecificNotificationDate(paymentDeadline, frequency, periodInstance);
                     } catch (IllegalArgumentException e) {
-                        log.warn("Não foi possível calcular potentialNotificationDate para config ID {}, imposto ID {}: {}. A ignorar este cálculo.", config.getId(), clientTax.getId(), e.getMessage());
+                        log.info("Não foi possível calcular potentialNotificationDate para config ID {}, imposto ID {}: {}. A ignorar este cálculo.", config.getId(), clientTax.getId(), e.getMessage());
                         continue; // Próxima iteração de periodInstance
                     }
 
@@ -142,7 +142,7 @@ public class NotificationService {
                             clientNotificationService.createClientNotification(clientNotification);
                             log.info("Registo ClientNotification ID {} criado com sucesso para cliente {}, imposto ID {}.", clientNotification.getId(), client.getId(), clientTax.getId());
                         } catch (Exception e) {
-                            log.error("Falha ao guardar ClientNotification para cliente {}, imposto ID {}: {}", client.getId(), clientTax.getId(), e.getMessage(), e);
+                            log.info("Falha ao guardar ClientNotification para cliente {}, imposto ID {}: {}", client.getId(), clientTax.getId(), e.getMessage(), e);
                             // Considerar como tratar esta falha
                         }
                         // Se uma notificação foi criada hoje para este imposto/config, não precisamos verificar outros periodInstance para o mesmo.
@@ -174,7 +174,7 @@ public class NotificationService {
         Optional<ClientNotificationConfig> configOpt = clientNotificationConfigService.getClientNotificationConfigById(configId);
 
         if (configOpt.isEmpty()) {
-            log.warn("Configuração de notificação com ID {} não encontrada para envio forçado.", configId);
+            log.info("Configuração de notificação com ID {} não encontrada para envio forçado.", configId);
             throw new ResourceNotFoundException("Configuração de notificação com ID " + configId + " não encontrada.");
         }
 
@@ -186,7 +186,7 @@ public class NotificationService {
         ContactType contactTypeForNotification = config.getNotificationType();
 
         if (taxType == null || contactTypeForNotification == null) {
-            log.error("Configuração ID {} tem taxType ou notificationType nulos. Não é possível preparar a notificação.", configId);
+            log.info("Configuração ID {} tem taxType ou notificationType nulos. Não é possível preparar a notificação.", configId);
             return 0; // Ou lançar uma exceção
         }
 
@@ -204,26 +204,26 @@ public class NotificationService {
             try {
                 clientTaxList = taxService.getTaxesByClientAndType(currentClient, taxType);
             } catch (Exception e) {
-                log.error("Erro ao obter impostos para cliente ID {} e tipo de imposto {}: {}", currentClient.getId(), taxType.getDescription(), e.getMessage(), e);
+                log.info("Erro ao obter impostos para cliente ID {} e tipo de imposto {}: {}", currentClient.getId(), taxType.getDescription(), e.getMessage(), e);
                 continue; // Próximo cliente
             }
 
             if (clientTaxList.isEmpty()) {
-                log.debug("Nenhum imposto do tipo '{}' encontrado para cliente ID {} (relevante para config ID {}).", taxType.getDescription(), currentClient.getId(), config.getId());
+                log.info("Nenhum imposto do tipo '{}' encontrado para cliente ID {} (relevante para config ID {}).", taxType.getDescription(), currentClient.getId(), config.getId());
                 continue;
             }
 
             for (Tax clientTax : clientTaxList) {
                 LocalDate paymentDeadline = clientTax.getPaymentDeadline();
                 if (paymentDeadline == null) {
-                    log.warn("Imposto ID {} para cliente ID {} tem paymentDeadline nula. A ignorar.", clientTax.getId(), currentClient.getId());
+                    log.info("Imposto ID {} para cliente ID {} tem paymentDeadline nula. A ignorar.", clientTax.getId(), currentClient.getId());
                     continue;
                 }
 
                 // Para "Forçar Envio", não verificamos a data com base na frequência/startPeriod.
                 // Apenas verificamos se o prazo ainda não passou.
                 if (paymentDeadline.isBefore(today)) {
-                    log.debug("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou. A ignorar para envio forçado.", paymentDeadline, clientTax.getId(), currentClient.getId());
+                    log.info("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou. A ignorar para envio forçado.", paymentDeadline, clientTax.getId(), currentClient.getId());
                     continue;
                 }
 
@@ -248,7 +248,7 @@ public class NotificationService {
                     log.info("Envio Forçado: ClientNotification ID {} criada para cliente ID {}, imposto ID {}.", clientNotification.getId(), currentClient.getId(), clientTax.getId());
                     notificationsCreatedAndTriggeredCount++;
                 } catch (Exception e) {
-                    log.error("Envio Forçado: Falha ao guardar ClientNotification para cliente ID {}, imposto ID {}: {}", currentClient.getId(), clientTax.getId(), e.getMessage(), e);
+                    log.info("Envio Forçado: Falha ao guardar ClientNotification para cliente ID {}, imposto ID {}: {}", currentClient.getId(), clientTax.getId(), e.getMessage(), e);
                     // Considerar se deve continuar ou parar em caso de erro aqui
                 }
             } // fim loop clientTaxList
@@ -285,7 +285,7 @@ public class NotificationService {
             case "Mensal" -> paymentDeadline.minusMonths(periodInstance);
             case "Trimestral" -> paymentDeadline.minusMonths(periodInstance * 3);
             default -> {
-                log.warn("Tipo de frequência desconhecido: {}", frequency);
+                log.info("Tipo de frequência desconhecido: {}", frequency);
                 throw new IllegalArgumentException("Tipo de frequência desconhecido: " + frequency);
             }
         };
@@ -298,7 +298,7 @@ public class NotificationService {
             case "Telefone" -> "Lembrete SMS ATMate:";
             case "Email" -> "Lembrete Email ATMate:";
             default -> {
-                log.warn("Descrição de ContactType desconhecida para título: {}", contactType.getDescription());
+                log.info("Descrição de ContactType desconhecida para título: {}", contactType.getDescription());
                 yield DEFAULT_NOTIFICATION_TITLE;
             }
         };
