@@ -9,13 +9,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -154,6 +156,115 @@ public class NotificationService {
         log.info("Tarefa prepareNotifications concluída para {}.", today);
         notificationSendingService.processAndSendPendingNotifications();
     }
+
+    /**
+     * Prepara e despoleta o envio de notificações para uma única ClientNotificationConfig.
+     * Este método é ideal para a funcionalidade "Forçar Envio".
+     *
+     * @param configId O ID da ClientNotificationConfig para a qual forçar o envio.
+     * @return O número de notificações que foram criadas e para as quais o envio foi tentado.
+     * @throws ResourceNotFoundException Se a configuração com o ID fornecido não for encontrada.
+     * @throws JsonProcessingException Se houver um erro ao processar dados JSON para a mensagem.
+     * @throws IllegalStateException Se a configuração estiver num estado que não permite o envio forçado (ex: inativa, se essa for uma regra de negócio).
+     */
+    public int prepareAndTriggerSingleConfigNotifications(Integer configId) throws ResourceNotFoundException, JsonProcessingException, IllegalStateException {
+        log.info("Iniciando preparação e envio forçado para config ID: {}", configId);
+        int notificationsCreatedAndTriggeredCount = 0;
+
+        Optional<ClientNotificationConfig> configOpt = clientNotificationConfigService.getClientNotificationConfigById(configId);
+
+        if (configOpt.isEmpty()) {
+            log.warn("Configuração de notificação com ID {} não encontrada para envio forçado.", configId);
+            throw new ResourceNotFoundException("Configuração de notificação com ID " + configId + " não encontrada.");
+        }
+
+        ClientNotificationConfig config = configOpt.get();
+
+
+        Client clientFromConfig = config.getClient(); // Pode ser null para configurações globais
+        TaxType taxType = config.getTaxType();
+        ContactType contactTypeForNotification = config.getNotificationType();
+
+        if (taxType == null || contactTypeForNotification == null) {
+            log.error("Configuração ID {} tem taxType ou notificationType nulos. Não é possível preparar a notificação.", configId);
+            return 0; // Ou lançar uma exceção
+        }
+
+        List<Client> clientsToProcess = new ArrayList<>();
+        if (clientFromConfig != null) {
+            // Se a configuração é para um cliente específico, processa apenas para ele.
+            clientsToProcess.add(clientFromConfig);
+            log.info("Configuração ID {} é para cliente específico ID: {}.", configId, clientFromConfig.getId());
+        }
+
+        LocalDate today = LocalDate.now(); // Usado para data de criação da notificação
+
+        for (Client currentClient : clientsToProcess) {
+            List<Tax> clientTaxList;
+            try {
+                clientTaxList = taxService.getTaxesByClientAndType(currentClient, taxType);
+            } catch (Exception e) {
+                log.error("Erro ao obter impostos para cliente ID {} e tipo de imposto {}: {}", currentClient.getId(), taxType.getDescription(), e.getMessage(), e);
+                continue; // Próximo cliente
+            }
+
+            if (clientTaxList.isEmpty()) {
+                log.debug("Nenhum imposto do tipo '{}' encontrado para cliente ID {} (relevante para config ID {}).", taxType.getDescription(), currentClient.getId(), config.getId());
+                continue;
+            }
+
+            for (Tax clientTax : clientTaxList) {
+                LocalDate paymentDeadline = clientTax.getPaymentDeadline();
+                if (paymentDeadline == null) {
+                    log.warn("Imposto ID {} para cliente ID {} tem paymentDeadline nula. A ignorar.", clientTax.getId(), currentClient.getId());
+                    continue;
+                }
+
+                // Para "Forçar Envio", não verificamos a data com base na frequência/startPeriod.
+                // Apenas verificamos se o prazo ainda não passou.
+                if (paymentDeadline.isBefore(today)) {
+                    log.debug("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou. A ignorar para envio forçado.", paymentDeadline, clientTax.getId(), currentClient.getId());
+                    continue;
+                }
+
+                // Lógica para criar e guardar a ClientNotification
+                ClientNotification clientNotification = new ClientNotification();
+                clientNotification.setClient(currentClient);
+                clientNotification.setTaxType(taxType);
+                clientNotification.setClientNotificationConfig(config); // Associar à config que originou
+                clientNotification.setNotificationType(contactTypeForNotification);
+                clientNotification.setCreateDate(today);
+                clientNotification.setSendDate(null); // Será preenchido pelo NotificationSendingService
+                clientNotification.setStatus("PENDENTE"); // Ou um status como "PENDENTE_FORCED"
+
+                String notificationTitle = getNotificationTitle(contactTypeForNotification, currentClient, taxType, clientTax, paymentDeadline);
+                String notificationMessage = getNotificationMessage(contactTypeForNotification, currentClient, taxType, clientTax, paymentDeadline);
+
+                clientNotification.setTitle(notificationTitle);
+                clientNotification.setMessage(notificationMessage);
+
+                try {
+                    clientNotificationService.createClientNotification(clientNotification);
+                    log.info("Envio Forçado: ClientNotification ID {} criada para cliente ID {}, imposto ID {}.", clientNotification.getId(), currentClient.getId(), clientTax.getId());
+                    notificationsCreatedAndTriggeredCount++;
+                } catch (Exception e) {
+                    log.error("Envio Forçado: Falha ao guardar ClientNotification para cliente ID {}, imposto ID {}: {}", currentClient.getId(), clientTax.getId(), e.getMessage(), e);
+                    // Considerar se deve continuar ou parar em caso de erro aqui
+                }
+            } // fim loop clientTaxList
+        } // fim loop clientsToProcess
+
+        if (notificationsCreatedAndTriggeredCount > 0) {
+            log.info("Total de {} notificações preparadas para envio forçado para config ID {}. A despoletar o serviço de envio.", notificationsCreatedAndTriggeredCount, configId);
+            notificationSendingService.processAndSendPendingNotifications(); // Tenta enviar imediatamente
+        } else {
+            log.info("Nenhuma notificação foi preparada para envio forçado para config ID {} (ex: prazos já passaram, sem impostos correspondentes).", configId);
+        }
+
+        log.info("Processo de preparação e envio forçado para config ID {} concluído.", configId);
+        return notificationsCreatedAndTriggeredCount;
+    }
+
 
     /**
      * Calcula uma data de notificação específica com base no prazo de pagamento, frequência e
