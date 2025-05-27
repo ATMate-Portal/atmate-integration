@@ -223,8 +223,8 @@ public class NotificationService {
                 // Para "Forçar Envio", não verificamos a data com base na frequência/startPeriod.
                 // Apenas verificamos se o prazo ainda não passou.
                 if (paymentDeadline.isBefore(today)) {
-                    log.info("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou. A ignorar para envio forçado.", paymentDeadline, clientTax.getId(), currentClient.getId());
-                    continue;
+                    log.info("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou.", paymentDeadline, clientTax.getId(), currentClient.getId());
+                    //continue;
                 }
 
                 // Lógica para criar e guardar a ClientNotification
