@@ -9,10 +9,17 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private static final String[] SWAGGER_WHITELIST_URLS = {
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(SWAGGER_WHITELIST_URLS).permitAll()
                         .anyRequest().permitAll() // Permitir todas as requisições para teste
                 )
                 .csrf(csrf -> csrf.disable()); // Desabilitar CSRF apenas para testes
