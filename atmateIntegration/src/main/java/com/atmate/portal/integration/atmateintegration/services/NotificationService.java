@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -163,11 +162,10 @@ public class NotificationService {
      *
      * @param configId O ID da ClientNotificationConfig para a qual forçar o envio.
      * @return O número de notificações que foram criadas e para as quais o envio foi tentado.
-     * @throws ResourceNotFoundException Se a configuração com o ID fornecido não for encontrada.
      * @throws JsonProcessingException Se houver um erro ao processar dados JSON para a mensagem.
      * @throws IllegalStateException Se a configuração estiver num estado que não permite o envio forçado (ex: inativa, se essa for uma regra de negócio).
      */
-    public int prepareAndTriggerSingleConfigNotifications(Integer configId) throws ResourceNotFoundException, JsonProcessingException, IllegalStateException {
+    public int prepareAndTriggerSingleConfigNotifications(Integer configId) throws Exception, JsonProcessingException, IllegalStateException {
         log.info("Iniciando preparação e envio forçado para config ID: {}", configId);
         int notificationsCreatedAndTriggeredCount = 0;
 
@@ -175,7 +173,7 @@ public class NotificationService {
 
         if (configOpt.isEmpty()) {
             log.info("Configuração de notificação com ID {} não encontrada para envio forçado.", configId);
-            throw new ResourceNotFoundException("Configuração de notificação com ID " + configId + " não encontrada.");
+            throw new Exception("Configuração de notificação com ID " + configId + " não encontrada.");
         }
 
         ClientNotificationConfig config = configOpt.get();
