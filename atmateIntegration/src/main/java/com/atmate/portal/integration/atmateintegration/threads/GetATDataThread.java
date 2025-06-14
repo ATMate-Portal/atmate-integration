@@ -3,7 +3,7 @@ package com.atmate.portal.integration.atmateintegration.threads;
 import com.atmate.portal.integration.atmateintegration.beans.ClientDetailsBean;
 import com.atmate.portal.integration.atmateintegration.database.entitites.*;
 import com.atmate.portal.integration.atmateintegration.database.services.*;
-import com.atmate.portal.integration.atmateintegration.utils.ClientDataUtils;
+import com.atmate.portal.integration.atmateintegration.utils.ClientDetailsUtils;
 import com.atmate.portal.integration.atmateintegration.utils.GSONFormatter;
 import com.atmate.portal.integration.atmateintegration.utils.enums.ErrorEnum;
 import com.atmate.portal.integration.atmateintegration.utils.exceptions.ATMateException;
@@ -329,8 +329,8 @@ public class GetATDataThread implements Runnable {
 
             //Client Part
             this.client.setName(clientData.getNome());
-            this.client.setGender(ClientDataUtils.formatGender(clientData.getSexo()));
-            this.client.setBirthDate(ClientDataUtils.parseData(clientData.getData_nascimento()));
+            this.client.setGender(ClientDetailsUtils.formatGender(clientData.getSexo()));
+            this.client.setBirthDate(ClientDetailsUtils.parseData(clientData.getData_nascimento()));
             this.client.setNationality(clientData.getNacionalidade());
 
             if(String.valueOf(this.client.getNif()).startsWith("1") || String.valueOf(this.client.getNif()).startsWith("2") || String.valueOf(this.client.getNif()).startsWith("3")){
@@ -352,7 +352,7 @@ public class GetATDataThread implements Runnable {
             clientService.updateClient(this.client.getId(), client);
 
             //Address Part
-            Address address = ClientDataUtils.buildAddress(this.client, clientData);
+            Address address = ClientDetailsUtils.buildAddress(this.client, clientData);
             if (!addressService.existsAddressForClient(address)) {
                 addressService.createAddress(address);
             } else {
@@ -362,7 +362,7 @@ public class GetATDataThread implements Runnable {
             //Contacts Part
             String phone_alt = clientData.getTelefone_alt();
             if (!phone_alt.isBlank() && !phone_alt.trim().equals("-")) {
-                Contact phone_altf = ClientDataUtils.buildContactPhone(this.client, phone_alt);
+                Contact phone_altf = ClientDetailsUtils.buildContactPhone(this.client, phone_alt);
                 if (!contactService.existsContactForClient(phone_altf)) {
                     contactService.createContact(phone_altf);
                 } else {
@@ -372,7 +372,7 @@ public class GetATDataThread implements Runnable {
 
             String email_alt = clientData.getEmail_alt();
             if (!email_alt.isBlank() && !email_alt.trim().equals("-")) {
-                Contact email_altf = ClientDataUtils.buildContactEmail(this.client, email_alt);
+                Contact email_altf = ClientDetailsUtils.buildContactEmail(this.client, email_alt);
                 if (!contactService.existsContactForClient(email_altf)) {
                     contactService.createContact(email_altf);
                 } else {

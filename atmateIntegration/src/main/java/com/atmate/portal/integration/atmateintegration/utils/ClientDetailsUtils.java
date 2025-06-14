@@ -6,7 +6,7 @@ import com.atmate.portal.integration.atmateintegration.database.entitites.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-public class ClientDataUtils {
+public class ClientDetailsUtils {
     public static String formatGender(String gender){
         if(gender.equals("MASCULINO"))
             return "M";
