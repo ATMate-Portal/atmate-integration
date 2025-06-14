@@ -1,9 +1,9 @@
-package com.atmate.portal.integration.atmateintegration.database;
+package com.atmate.portal.integration.atmateintegration.beans;
 
 import lombok.Data;
 
 @Data
-public class ClientDataDTO {
+public class ClientDetailsBean {
     private String nif;
     private String nome;
     private String data_nascimento;

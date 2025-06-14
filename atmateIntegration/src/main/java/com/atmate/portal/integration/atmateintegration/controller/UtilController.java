@@ -9,10 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-// Para email, você normalmente usaria o JavaMailSender
-// import org.springframework.mail.SimpleMailMessage;
-// import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,16 +16,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/test") // Mapeamento base para todos os endpoints neste controller
-public class TestController {
+@RequestMapping("/util")
+public class UtilController {
 
-    private static final Logger logger = LoggerFactory.getLogger(TestController.class);
+    private static final Logger logger = LoggerFactory.getLogger(UtilController.class);
 
     @Autowired
     private SmsSendingService smsSendingService;
 
     @Autowired
-    private EmailSendingService emailSendingService; // Exemplo de um serviço de SMS que você criaria
+    private EmailSendingService emailSendingService;
 
     @Autowired
     private NotificationService notificationService;

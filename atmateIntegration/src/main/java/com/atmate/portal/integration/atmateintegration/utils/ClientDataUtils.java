@@ -1,6 +1,6 @@
 package com.atmate.portal.integration.atmateintegration.utils;
 
-import com.atmate.portal.integration.atmateintegration.database.ClientDataDTO;
+import com.atmate.portal.integration.atmateintegration.beans.ClientDetailsBean;
 import com.atmate.portal.integration.atmateintegration.database.entitites.*;
 
 import java.time.LocalDate;
@@ -19,7 +19,7 @@ public class ClientDataUtils {
         return LocalDate.parse(data, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 
-    public static Address buildAddress(Client client, ClientDataDTO data){
+    public static Address buildAddress(Client client, ClientDetailsBean data){
         Address address = new Address();
         address.setClient(client);
         address.setStreet(data.getMorada());

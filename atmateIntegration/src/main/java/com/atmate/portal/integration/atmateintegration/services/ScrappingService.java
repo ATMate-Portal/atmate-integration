@@ -1,18 +1,18 @@
 package com.atmate.portal.integration.atmateintegration.services;
 
-import com.atmate.portal.integration.atmateintegration.beans.threads.GetATDataThread;
+import com.atmate.portal.integration.atmateintegration.threads.GetATDataThread;
 import com.atmate.portal.integration.atmateintegration.database.entitites.AtCredential;
 import com.atmate.portal.integration.atmateintegration.database.entitites.Client;
 import com.atmate.portal.integration.atmateintegration.database.services.AtCredentialService;
 import com.atmate.portal.integration.atmateintegration.database.services.ClientService;
-import com.atmate.portal.integration.atmateintegration.utils.ProfileUtil;
+import com.atmate.portal.integration.atmateintegration.utils.APIProfileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationEventPublisher;
+
 import java.util.List;
 
 @Service
@@ -25,9 +25,9 @@ public class ScrappingService {
     @Autowired
     AtCredentialService atCredentialService;
     @Autowired
-    CryptoService cryptoService;
+    EncryptService cryptoService;
     @Autowired
-    private ProfileUtil profileUtil;
+    private APIProfileUtils profileUtil;
     @Autowired
     private ApplicationContext applicationContext;
 

@@ -1,6 +1,6 @@
-package com.atmate.portal.integration.atmateintegration.beans.threads;
+package com.atmate.portal.integration.atmateintegration.threads;
 
-import com.atmate.portal.integration.atmateintegration.database.ClientDataDTO;
+import com.atmate.portal.integration.atmateintegration.beans.ClientDetailsBean;
 import com.atmate.portal.integration.atmateintegration.database.entitites.*;
 import com.atmate.portal.integration.atmateintegration.database.services.*;
 import com.atmate.portal.integration.atmateintegration.utils.ClientDataUtils;
@@ -21,7 +21,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -326,7 +325,7 @@ public class GetATDataThread implements Runnable {
 
             //Converter dados vindos do python para objeto
             ObjectMapper mapper = new ObjectMapper();
-            ClientDataDTO clientData = mapper.readValue(taxJSON, ClientDataDTO.class);
+            ClientDetailsBean clientData = mapper.readValue(taxJSON, ClientDetailsBean.class);
 
             //Client Part
             this.client.setName(clientData.getNome());

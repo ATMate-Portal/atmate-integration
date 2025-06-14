@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Service
-public class CryptoService {
+public class EncryptService {
     private static final int GCM_TAG_LENGTH = 128; // bits
 
     @Autowired

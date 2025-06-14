@@ -1,4 +1,4 @@
-package com.atmate.portal.integration.atmateintegration.utils.exceptions;
+package com.atmate.portal.integration.atmateintegration.dto;
 
 import lombok.Builder;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.util.Date;
 @Data
 @Getter
 @Builder
-public class ErrorResponseDTO {
+public class ErrorResponse {
     private Date timestamp;
     private int status;
     private String error;
