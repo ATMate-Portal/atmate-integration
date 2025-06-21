@@ -222,7 +222,7 @@ public class NotificationService {
                 // Apenas verificamos se o prazo ainda não passou.
                 if (paymentDeadline.isBefore(today)) {
                     log.info("Prazo de pagamento {} para imposto ID {} (cliente ID {}) já passou.", paymentDeadline, clientTax.getId(), currentClient.getId());
-                    //continue;
+                    continue;
                 }
 
                 // Lógica para criar e guardar a ClientNotification
