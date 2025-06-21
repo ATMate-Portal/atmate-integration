@@ -84,6 +84,29 @@ public class GatewayController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @GetMapping("/sync")
+    @Operation(
+            summary = "Atualizar dados AT de todos os clientes",
+            description = "Endpoint que invoca o web scraping à Autoridade Tributária (AT) para atualização completa dos dados de todos os clientes. Retorna 200 OK em caso de sucesso."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Dados do cliente sincronizados com sucesso.",
+                    content = @Content(schema = @Schema(implementation = Void.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Erro interno do servidor ou falha durante o scraping.",
+                    content = @Content(schema = @Schema(implementation = String.class))
+            )
+    })
+    public ResponseEntity<?> sync() throws Exception {
+        logger.info("Syncing all clients...");
+        scrappingService.executeScrape();
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @GetMapping("/sendNotification/{configId}")
     @Operation(
             summary = "Enviar notificações para uma configuração específica",
