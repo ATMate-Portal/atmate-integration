@@ -47,7 +47,7 @@ public class ClientNotification {
     @Size(max = 100, message = "O título deve ter no máximo 100 caracteres")
     private String title;
 
-    @Column(nullable = false, length = 500)
+    @Column(nullable = false)
     @NotBlank(message = "A mensagem é obrigatória")
     @Size(max = 500, message = "A mensagem deve ter no máximo 500 caracteres")
     private String message;
