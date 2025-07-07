@@ -6,11 +6,11 @@ O `atmate-integration` é um serviço **crucial** no ecossistema ATMate, respons
 - Persistir esses dados numa base de dados local.
 - Gerir o envio de notificações via **SMS** e **Email** com base nas informações recolhidas.
 
-Este serviço atua como o **motor de dados da aplicação**, garantindo que o `atmate-gateway` e o **frontend** tenham acesso a informações atualizadas e centralizadas.
+Este serviço atua como o **motor de dados da aplicação**, garantindo que o [ATMate Gateway](https://github.com/ATMate-Portal/atmate-gateway/) e o [ATMate Client](https://github.com/ATMate-Portal/atmate-client/) tenham acesso a informações atualizadas e centralizadas.
 
 ---
 
-## ✨ Funcionalidades Chave
+## ✨ Funcionalidades
 
 ### 🔎 Web Scraping Automatizado
 
@@ -54,7 +54,7 @@ Este serviço atua como o **motor de dados da aplicação**, garantindo que o `a
 ### Outros
 
 - `Maven` 
-- `Swagger` (via SpringDoc OpenAPI)
+- `Swagger` (SpringDoc OpenAPI)
 
 ---
 
@@ -72,7 +72,7 @@ atmate-integration/
 │   ├── utils/              # Utilitários, enums, exceções
 │   ├── dto/                # Objetos de transferência de dados 
 │   ├── threads/            # Lógica multi-thread de invocação a web-scraping
-│   ├── config/             # Utilitários, enums, exceções
+│   ├── config/             # Configurações e segurança
 │   └── AtmateIntegrationApplication.java
 ├── src/main/resources/
 │   ├── application.properties
@@ -86,6 +86,6 @@ atmate-integration/
 
 ## 📄 Documentação da API
 
-- Aceder à documentação gerada automaticamente: [localhost:8080/atmate-integration/swagger-ui/index.html](localhost:8080/atmate-integration/swagger-ui/index.html)
+- Aceder à documentação gerada automaticamente: [http://localhost:8080/atmate-integration/swagger-ui/index.html](http://localhost:8080/atmate-integration/swagger-ui/index.html)
 
 ---
