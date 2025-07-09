@@ -162,8 +162,7 @@ try:
             
     # Se nem todos os inputs foram encontrados como HTML, tenta extrair de um 'model' JavaScript
     if inputs_found_as_html < len(input_fields_chamada4): # Se faltarem campos
-        print("Aviso: Alguns campos para POST da Chamada 4 não foram encontrados como inputs HTML. A tentar extrair de um objeto 'model' JS.")
-        
+
         # Padrões para extrair do model (ASSUME QUE A RESPOSTA DA CHAMADA 3 TEM UM 'model')
         js_model_chamada4_patterns = {
             'action': (GENERIC_VALUE_REGEX_FUNC_FIRST, GENERIC_VALUE_REGEX_DIRECT_FIRST), # URL de POST
