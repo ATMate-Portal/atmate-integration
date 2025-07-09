@@ -84,10 +84,10 @@ def extract_js_data(html_soup, script_identifier, field_patterns):
 try:
     nif = os.environ.get("NIF")
     if not nif:
-        nif = "249428520"
+        nif = "226144275"
     password = os.environ.get("PASSWORD")
     if not password:
-        password = "SFHi3242v3"
+        password = "X1AUJTEHEZX6"
     scriptPath = os.environ.get("SCRIPT_PATH")
     if not scriptPath:
         scriptPath = "src/main/resources/scripts/"
