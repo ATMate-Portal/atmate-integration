@@ -3,17 +3,17 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import os
-import re # Necessário para as regexes
-from urllib.parse import quote_plus # Necessário para URL encoding
-import sys # Para output UTF-8 puro
+import re
+from urllib.parse import quote_plus
+import sys
 
-# --- Regexes Comuns para Extração de Valores de JavaScript (reutilizadas) ---
+# --- Regexes Comuns para Extração de Valores de JavaScript (mantidas para outros contextos) ---
 GENERIC_VALUE_REGEX_DIRECT_FIRST = r"{key}:\s*(?:'([^']*)'|stringOrNull\('([^']*)'\))"
 GENERIC_VALUE_REGEX_FUNC_FIRST = r"{key}:\s*(?:stringOrNull\('([^']*)'\)|'([^']*)')"
 CSRF_TOKEN_REGEX = r"_csrf:\s*\{\s*parameterName:\s*'[^']*',?\s*token\s*:\s*'(?P<token>[^']+)',?.*?\}"
 JSON_PARSE_REGEX = r"{key}:\s*JSON\.parse\('(.+?)'\s*\|\|\s*null\)"
 
-# --- Função Auxiliar de Extração de JS (reutilizada) ---
+# --- Função Auxiliar de Extração de JS (mantida) ---
 def extract_js_data(html_soup, script_identifier, field_patterns):
     script_content = None
     for script_tag in html_soup.find_all('script', type='text/javascript'):
@@ -27,7 +27,6 @@ def extract_js_data(html_soup, script_identifier, field_patterns):
     extracted_data = {}
     for key, patterns in field_patterns.items():
         value = None
-        
         for pattern in patterns:
             if pattern is None: continue
             
@@ -59,10 +58,13 @@ def extract_js_data(html_soup, script_identifier, field_patterns):
         if value is not None:
             extracted_data[key] = value
         else:
-            # Não levantar erro para 'credential_json_parse' se for permitido que esteja vazio
-            if key == 'credential_json_parse':
+            # Para JSON_PARSE, podemos retornar um dicionário vazio se não encontrar
+            if key.endswith('_json_parse'):
                 extracted_data[key] = {}
             else:
+                # Para outros campos, se não for essencial, pode retornar None.
+                # Se for essencial para o fluxo, ainda pode levantar um erro.
+                # Mantido o raise ValueError para campos essenciais.
                 raise ValueError(f"Valor '{key}' não encontrado no script JavaScript identificado por '{script_identifier}'.")
             
     return extracted_data
@@ -71,7 +73,7 @@ def extract_js_data(html_soup, script_identifier, field_patterns):
 try:
     nif = os.environ.get("NIF")
     if not nif:
-        nif = "226144275"
+        nif = ""
     scriptPath = os.environ.get("SCRIPT_PATH")
     if not scriptPath:
         scriptPath = "src/main/resources/scripts/"
@@ -87,7 +89,7 @@ try:
         session = pickle.load(f)
 
     # CHAMADA 1
-    headers_chamada1 = { # Headers redefinidos para cada bloco de chamada
+    headers_chamada1 = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'pt-PT,pt;q=0.8',
         'Cache-Control': 'no-cache',
@@ -113,11 +115,11 @@ try:
     if not location_chamada2:
         raise ValueError("Location header não encontrado na Chamada 1 para o redirecionamento da Chamada 2.")
 
-    response_chamada2 = session.get(location_chamada2, cookies=session.cookies, headers=headers_chamada1) # Reutilizar headers da Chamada 1
+    response_chamada2 = session.get(location_chamada2, cookies=session.cookies, headers=headers_chamada1)
 
 
     # CHAMADA 3
-    headers_chamada3 = headers_chamada1.copy() # Copia os headers da Chamada 1/2
+    headers_chamada3 = headers_chamada1.copy()
     headers_chamada3.update({
         'Sec-Fetch-Site': 'cross-site',
         'Referer': 'https://www.portaldasfinancas.gov.pt/',
@@ -135,46 +137,82 @@ try:
     response_chamada3 = session.get('https://www.acesso.gov.pt/loginRedirectForm', params=params_chamada3, cookies=session.cookies, headers=headers_chamada3)
 
 
-    # CHAMADA 4 - Extrair dados do JavaScript 'model' (do HTML da Chamada 3)
-    soup_chamada4_source = BeautifulSoup(response_chamada3.text, 'html.parser') # A resposta da CHAMADA 3 é que tem o HTML com o 'model'
+    # CHAMADA 4 - Extrair dados do HTML (VOLTOU AOS INPUTS ORIGINAIS OU MODEL SE NÃO ENCONTRAR INPUT)
+    soup_chamada4_source = BeautifulSoup(response_chamada3.text, 'html.parser')
 
-    # Definição dos padrões para a extração do objeto 'model' da CHAMADA 4
-    # Este HTML deve ser similar ao que já vimos para 'acesso.gov.pt', mas com partID='PFIN'
-    # e o credential_json_parse deve ter os dados que antes eram inputs
-    js_model_chamada4_patterns = {
-        'partID': (GENERIC_VALUE_REGEX_DIRECT_FIRST, GENERIC_VALUE_REGEX_FUNC_FIRST),
-        'path': (GENERIC_VALUE_REGEX_DIRECT_FIRST, GENERIC_VALUE_REGEX_FUNC_FIRST),
-        '_csrf_token_special': (CSRF_TOKEN_REGEX,),
-        'action': (GENERIC_VALUE_REGEX_FUNC_FIRST, GENERIC_VALUE_REGEX_DIRECT_FIRST), # 'action' é o URL POST
-        'credential_json_parse': (JSON_PARSE_REGEX,) # Este JSON deve conter tv, sign, nif, sessionID, etc.
-    }
+    # Nomes dos campos que se espera que sejam inputs
+    input_fields_chamada4 = [
+        "tv", "partID", "sign", "nif", "sessionID", 
+        "userName", "userID", "tc", "credentialID", "id", # Estes últimos parecem vir do credential
+        "authMethod", "authQAALevel"
+    ]
+    
+    data_post_chamada4 = {}
+    inputs_found_as_html = 0
 
-    extracted_data_chamada4 = extract_js_data(soup_chamada4_source, 'var model =', js_model_chamada4_patterns)
+    # Tentar extrair como inputs HTML primeiro (lógica original)
+    for field_name in input_fields_chamada4:
+        input_tag = soup_chamada4_source.find("input", {"name": field_name})
+        if input_tag and "value" in input_tag.attrs:
+            data_post_chamada4[field_name] = input_tag["value"]
+            inputs_found_as_html += 1
+        else:
+            # Se um input não for encontrado, não levanta erro, tenta o próximo
+            pass 
+            
+    # Se nem todos os inputs foram encontrados como HTML, tenta extrair de um 'model' JavaScript
+    if inputs_found_as_html < len(input_fields_chamada4): # Se faltarem campos
+        print("Aviso: Alguns campos para POST da Chamada 4 não foram encontrados como inputs HTML. A tentar extrair de um objeto 'model' JS.")
+        
+        # Padrões para extrair do model (ASSUME QUE A RESPOSTA DA CHAMADA 3 TEM UM 'model')
+        js_model_chamada4_patterns = {
+            'action': (GENERIC_VALUE_REGEX_FUNC_FIRST, GENERIC_VALUE_REGEX_DIRECT_FIRST), # URL de POST
+            '_csrf_token_special': (CSRF_TOKEN_REGEX,),
+            'credential_json_parse': (JSON_PARSE_REGEX,) # Onde os dados tv, sign, nif, etc. devem estar
+        }
+        
+        try:
+            extracted_data_from_model_chamada4 = extract_js_data(soup_chamada4_source, 'var model =', js_model_chamada4_patterns)
+            
+            # Adicionar o _csrf do model se estiver presente
+            if '_csrf_token_special' in extracted_data_from_model_chamada4:
+                data_post_chamada4['_csrf'] = extracted_data_from_model_chamada4['_csrf_token_special']
 
-    # Preparar o payload 'data_post_chamada4' a partir dos dados extraídos do model
-    data_post_chamada4 = extracted_data_chamada4.get('credential_json_parse', {})
+            # Se 'credential' foi parseado do model, adiciona seus campos
+            credential_data_from_model = extracted_data_from_model_chamada4.get('credential_json_parse', {})
+            for key, value in credential_data_from_model.items():
+                data_post_chamada4[key] = value
 
-    # Adicionar o _csrf, path, partID (se não estiverem já no credential)
-    if '_csrf_token_special' in extracted_data_chamada4:
-        data_post_chamada4['_csrf'] = extracted_data_chamada4['_csrf_token_special']
-    if 'path' in extracted_data_chamada4 and 'path' not in data_post_chamada4:
-        data_post_chamada4['path'] = extracted_data_chamada4['path']
-    if 'partID' in extracted_data_chamada4 and 'partID' not in data_post_chamada4:
-        data_post_chamada4['partID'] = extracted_data_chamada4['partID']
+            # O URL de POST vem do campo 'action' do model
+            post_url_chamada4 = extracted_data_from_model_chamada4.get('action')
+            if not post_url_chamada4: # Se o action não foi encontrado no model
+                raise ValueError("URL de ação para POST da Chamada 4 não encontrado no script JavaScript do 'model'.")
+        except ValueError as e:
+            # Se a extração do model falhar completamente
+            raise ValueError(f"Erro na extração de dados da Chamada 4: {e}. Nem inputs HTML nem objeto 'model' JS puderam fornecer todos os dados necessários.")
+    
+    # URL de POST para a Chamada 4 (se não veio do model, é porque está fixo no código original)
+    # Se o URL 'action' não foi encontrado no model, usamos o URL de POST original para a Chamada 4.
+    if 'post_url_chamada4' not in locals() or not post_url_chamada4:
+        post_url_chamada4 = 'https://www.portaldasfinancas.gov.pt/main.jsp?body=/ca/notasCobrancaForm.jsp' 
+    
+    # Verificar se todos os campos essenciais estão em data_post_chamada4
+    # Ajuste esta lista se houver campos ABSOLUTAMENTE ESSENCIAIS que a falta deles deve quebrar o script
+    required_fields = ["tv", "partID", "sign", "nif"] 
+    for field in required_fields:
+        if field not in data_post_chamada4:
+            raise ValueError(f"Campo '{field}' essencial para o POST da Chamada 4 não foi encontrado. Verifique o HTML da Chamada 3.")
 
-    post_url_chamada4 = extracted_data_chamada4.get('action') # O URL para o POST vem do campo 'action' do model
-    if not post_url_chamada4:
-        raise ValueError("URL de ação para POST da Chamada 4 não encontrado no script JavaScript.")
 
-    headers_chamada4 = { # Redefinição de headers para a Chamada 4 POST
+    headers_chamada4 = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'pt-PT,pt;q=0.8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Origin': 'https://www.acesso.gov.pt', # Corrigido para acesso.gov.pt
+        'Origin': 'https://www.acesso.gov.pt',
         'Pragma': 'no-cache',
-        'Referer': 'https://www.acesso.gov.pt/', # Corrigido para acesso.gov.pt
+        'Referer': 'https://www.acesso.gov.pt/',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'cross-site',
@@ -187,24 +225,24 @@ try:
     }
 
     response_chamada4 = session.post(
-        post_url_chamada4, # URL dinâmico
+        post_url_chamada4, # URL dinâmico ou fallback fixo
         cookies=session.cookies,
         headers=headers_chamada4,
-        data=data_post_chamada4, # Dados como dicionário
+        data=data_post_chamada4,
         allow_redirects=False
     )
 
     # CHAMADA 5
     response_chamada5 = session.get(
-        'https://www.portaldasfinancas.gov.pt/pt/main.jsp?body=/ca/notasCobrancaForm.jsp', # URL ajustado para /pt/main.jsp
+        'https://www.portaldasfinancas.gov.pt/pt/main.jsp?body=/ca/notasCobrancaForm.jsp',
         cookies=session.cookies,
-        headers=headers_chamada4, # Reutilizar headers da Chamada 4 POST
+        headers=headers_chamada4,
     )
 
     # CHAMADA 6
-    headers_chamada6 = headers_chamada4.copy() # Copia os headers da Chamada 4
+    headers_chamada6 = headers_chamada4.copy()
     headers_chamada6.update({
-        'Referer': 'https://www.portaldasfinancas.gov.pt/pt/main.jsp?body=/ca/notasCobrancaForm.jsp', # Referer atualizado
+        'Referer': 'https://www.portaldasfinancas.gov.pt/pt/main.jsp?body=/ca/notasCobrancaForm.jsp',
     })
 
     data_post_chamada6 = {
@@ -213,7 +251,6 @@ try:
     }
 
     response_chamada6 = session.post('https://www.portaldasfinancas.gov.pt/pt/main.jsp', cookies=session.cookies, headers=headers_chamada6, data=data_post_chamada6)
-
 
     soup_chamada6 = BeautifulSoup(response_chamada6.text, 'html.parser')
 
@@ -225,26 +262,27 @@ try:
             tabela_eT_correta = tabela_eT
             break
 
-    if not tabela_eT_correta: # Adicionar verificação se a tabela principal não for encontrada
-        raise ValueError("Tabela principal 'eT' com 'iT' aninhada não encontrada na Chamada 6.")
+    if not tabela_eT_correta:
+        print("Aviso: Tabela principal 'eT' com 'iT' aninhada não encontrada na Chamada 6. Retornando dados vazios para esta secção.")
+        headers_table = []
+        data_table_rows = []
+    else:
+        tabela_iT = tabela_eT_correta.find('table', class_='iT')
 
-    tabela_iT = tabela_eT_correta.find('table', class_='iT')
+        if not tabela_iT:
+            print("Aviso: Tabela 'iT' aninhada não encontrada na Chamada 6. Retornando dados vazios para esta secção.")
+            headers_table = []
+            data_table_rows = []
+        else:
+            headers_table = [th.get_text(strip=True) for th in tabela_iT.find('tr', class_='iTR').find_all('th')[:-1]]
+            data_table_rows = []
+            for row in tabela_iT.find_all('tr', class_='iTR'):
+                cols = row.find_all('td')[:-1]
+                if cols:
+                    row_data = [col.get_text(strip=True).replace("\xa0", " ").replace("€", "EUR") for col in cols]
+                    data_table_rows.append(row_data)
 
-    if not tabela_iT: # Adicionar verificação se a tabela aninhada não for encontrada
-        raise ValueError("Tabela 'iT' aninhada não encontrada na Chamada 6.")
-
-
-    headers_table = [th.get_text(strip=True) for th in tabela_iT.find('tr', class_='iTR').find_all('th')[:-1]]
-
-    data_table_rows = []
-
-    for row in tabela_iT.find_all('tr', class_='iTR'):
-        cols = row.find_all('td')[:-1]
-        if cols:
-            row_data = [col.get_text(strip=True).replace("\xa0", " ").replace("€", "EUR") for col in cols]
-            data_table_rows.append(row_data)
-
-    result_final_cobranca = {"headers": headers_table, "rows": data_table_rows} # Renomeado para evitar conflito
+    result_final_cobranca = {"headers": headers_table, "rows": data_table_rows}
 
     result_json = json.dumps(result_final_cobranca, ensure_ascii=False).encode('utf-8').decode('utf-8')
     sys.stdout.buffer.write(result_json.encode('utf-8'))

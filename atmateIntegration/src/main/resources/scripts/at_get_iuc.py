@@ -75,7 +75,7 @@ try:
 
     nif = os.environ.get("NIF")
     if not nif:
-        nif = "226144275"
+        nif = ""
     scriptPath = os.environ.get("SCRIPT_PATH")
     if not scriptPath:
         scriptPath = "src/main/resources/scripts/"
