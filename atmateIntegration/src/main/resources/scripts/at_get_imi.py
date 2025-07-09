@@ -263,14 +263,12 @@ try:
             break
 
     if not tabela_eT_correta:
-        print("Aviso: Tabela principal 'eT' com 'iT' aninhada não encontrada na Chamada 6. Retornando dados vazios para esta secção.")
         headers_table = []
         data_table_rows = []
     else:
         tabela_iT = tabela_eT_correta.find('table', class_='iT')
 
         if not tabela_iT:
-            print("Aviso: Tabela 'iT' aninhada não encontrada na Chamada 6. Retornando dados vazios para esta secção.")
             headers_table = []
             data_table_rows = []
         else:
@@ -285,7 +283,7 @@ try:
     result_final_cobranca = {"headers": headers_table, "rows": data_table_rows}
 
     result_json = json.dumps(result_final_cobranca, ensure_ascii=False).encode('utf-8').decode('utf-8')
-    sys.stdout.buffer.write(result_json.encode('utf-8'))
+    print(result_json)
 
 except Exception as e:
     print(f"Ocorreu um erro inesperado: {e}")

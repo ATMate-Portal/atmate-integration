@@ -315,9 +315,8 @@ try:
         "resumo_iuc": result_iuc_summary
     }
 
-    final_json_output = json.dumps(final_combined_data, ensure_ascii=False, indent=4)
-
-    sys.stdout.buffer.write(final_json_output.encode('utf-8'))
+    result_json = json.dumps(final_combined_data, ensure_ascii=False).encode('utf-8').decode('utf-8')
+    print(result_json)
 
 except Exception as e:
     print(f"Ocorreu um erro inesperado: {e}")
