@@ -242,7 +242,6 @@ try:
     button_elements = soup_chamada5_part2.findAll('button', {'id': 'btnConsultVeic'})
 
     if not button_elements: # Adicionar verificação se botões não forem encontrados
-        print("Aviso: Botões 'btnConsultVeic' não encontrados. Verifique o HTML.")
         button_values = []
     else:
         button_values = [button.get('value') for button in button_elements]
@@ -251,7 +250,6 @@ try:
 
     if not table:
         # Se a tabela não for encontrada, significa que a estrutura da página mudou ou não há dados
-        print("Aviso: Tabela 'LST_VEICULOS_CONSULTA_ID' não encontrada. Pode não haver dados de IUC ou a estrutura da página mudou.")
         headers_table = []
         data_table_rows = []
     else:
@@ -302,10 +300,8 @@ try:
                 vehicle_details = response_vehicle_details.json()
                 vehicle_details['matriculaValue'] = button_value
             except json.JSONDecodeError:
-                print(f"Erro ao descodificar JSON para matriculaValue={button_value}.")
                 vehicle_details = {"error": "Falha ao obter detalhes do veículo", "matriculaValue": button_value, "raw_response": response_vehicle_details.text}
         else:
-            print(f"Erro para matriculaValue={button_value}: Status {response_vehicle_details.status_code}")
             vehicle_details = {"error": "Falha na requisição", "matriculaValue": button_value, "status_code": response_vehicle_details.status_code}
 
         all_vehicle_details.append(vehicle_details)
