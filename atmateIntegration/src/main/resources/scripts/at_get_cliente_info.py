@@ -360,8 +360,9 @@ try:
             if chave in mapa_contactos:
                 dados_cliente[mapa_contactos[chave]] = dd.get_text(strip=True)
 
-    result_json = json.dumps(dados_cliente, ensure_ascii=False).encode('utf-8').decode('utf-8')
-    print(result_json)
+    
+    result_json = json.dumps(dados_cliente, ensure_ascii=False)
+    sys.stdout.buffer.write(result_json.encode('utf-8'))  # ← garante byte output puro em UTF-8
 
 except Exception as e:
     print(f"Ocorreu um erro inesperado: {e}")

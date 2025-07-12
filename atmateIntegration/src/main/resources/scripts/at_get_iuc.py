@@ -311,8 +311,8 @@ try:
         "resumo_iuc": result_iuc_summary
     }
 
-    result_json = json.dumps(final_combined_data, ensure_ascii=False).encode('utf-8').decode('utf-8')
-    print(result_json)
+    result_json = json.dumps(final_combined_data, ensure_ascii=False)
+    sys.stdout.buffer.write(result_json.encode('utf-8'))  # ← garante byte output puro em UTF-8
 
 except Exception as e:
     print(f"Ocorreu um erro inesperado: {e}")

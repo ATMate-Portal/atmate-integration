@@ -281,8 +281,8 @@ try:
 
     result_final_cobranca = {"headers": headers_table, "rows": data_table_rows}
 
-    result_json = json.dumps(result_final_cobranca, ensure_ascii=False).encode('utf-8').decode('utf-8')
-    print(result_json)
+    result_json = json.dumps(result_final_cobranca, ensure_ascii=False)
+    sys.stdout.buffer.write(result_json.encode('utf-8'))  # ← garante byte output puro em UTF-8
 
 except Exception as e:
     print(f"Ocorreu um erro inesperado: {e}")
