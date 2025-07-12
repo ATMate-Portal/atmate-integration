@@ -128,7 +128,7 @@ public class GetATDataThread implements Runnable {
             environment.put("NIF", String.valueOf(nif));
             Process process = processBuilder.start();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.ISO_8859_1));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
 
             StringBuilder output = new StringBuilder();
             String line;
@@ -240,7 +240,7 @@ public class GetATDataThread implements Runnable {
             environment.put("NIF", String.valueOf(nif));
             Process process = processBuilder.start();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.ISO_8859_1));
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
 
             StringBuilder output = new StringBuilder();
             String line;
